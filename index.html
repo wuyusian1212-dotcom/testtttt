@@ -1286,9 +1286,17 @@ body {
 
     <!-- top bar -->
     <div class="map-overlay-top">
-      <input class="map-search-box" id="destInput" placeholder="🔍 輸入目的地..."
-             onfocus="document.getElementById('destSuggestions').classList.add('show')"
-             onblur="setTimeout(()=>document.getElementById('destSuggestions').classList.remove('show'),200)">
+      <div style="position:relative;flex:1">
+        <input class="map-search-box" id="destInput" placeholder="🔍 輸入目的地..."
+               style="width:100%;padding-right:32px"
+               onfocus="document.getElementById('destSuggestions').classList.add('show')"
+               onblur="setTimeout(()=>document.getElementById('destSuggestions').classList.remove('show'),200)"
+               oninput="document.getElementById('destClear').style.display=this.value?'flex':'none'">
+        <button id="destClear" onclick="clearDestInput()"
+          style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);
+                 background:none;border:none;cursor:pointer;color:var(--text3);font-size:1rem;
+                 line-height:1;padding:0;width:20px;height:20px;align-items:center;justify-content:center">✕</button>
+      </div>
       <div class="map-btn-loc" onclick="locateMe()" title="定位">📡</div>
     </div>
 
@@ -1979,6 +1987,16 @@ function selectDestByName(name) {
       document.getElementById('mapFare').textContent = '—';
     }
   });
+}
+
+function clearDestInput() {
+  const input = document.getElementById('destInput');
+  input.value = '';
+  document.getElementById('destClear').style.display = 'none';
+  document.getElementById('mapDestLabel').textContent = '選擇目的地';
+  document.getElementById('mapFare').textContent = '—';
+  if (directionsRenderer) directionsRenderer.setDirections({ routes: [] });
+  input.focus();
 }
 
 function locateMe() {
