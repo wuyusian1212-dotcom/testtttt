@@ -1466,15 +1466,15 @@ body {
     <div class="modal-title">🚗 開新揪團</div>
     <div class="modal-sub">設定行程資訊，建立後立即開啟聊天室</div>
     <div style="font-size:0.75rem;color:var(--text3);margin-bottom:6px;font-weight:600">目的地</div>
-    <input class="login-field" id="createDest" type="text" placeholder="輸入目的地">
+    <input class="login-field" id="createDest" type="text" placeholder="搜尋目的地...">
     <div style="font-size:0.75rem;color:var(--text3);margin-bottom:8px;font-weight:600">最多人數（含你）</div>
     <div class="seats-row">
       <button class="seat-btn" data-seats="2" onclick="setMaxSeats(2)">2 人</button>
       <button class="seat-btn" data-seats="3" onclick="setMaxSeats(3)">3 人</button>
       <button class="seat-btn active" data-seats="4" onclick="setMaxSeats(4)">4 人</button>
     </div>
-    <div style="font-size:0.75rem;color:var(--text3);margin-bottom:6px;font-weight:600">預估總車資 ($)</div>
-    <input class="login-field" id="createFare" type="number" placeholder="例：180" min="1">
+    <div style="font-size:0.75rem;color:var(--text3);margin-bottom:6px;font-weight:600">預估車資（自動計算）</div>
+    <div id="createFareDisplay" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px;font-size:0.9rem;font-weight:700;color:var(--accent);margin-bottom:16px">— 請先選擇目的地</div>
     <button class="modal-confirm-btn" onclick="submitCreateRide()">建立揪團</button>
     <button class="modal-cancel-btn" onclick="closeCreateModal()">取消</button>
   </div>
@@ -1575,7 +1575,7 @@ let localChatHistory = {};   // rideId → messages[]
 
 /* Google Maps 相關變數 */
 let gMap, directionsService, directionsRenderer, geocoder;
-let placesAuto, placesAutoSched;
+let placesAuto, placesAutoSched, placesAutoCreate;
 const NCU = { lat: 24.9683, lng: 121.1944 }; // 中央大學
 let userLocation = NCU;
 
@@ -1920,6 +1920,32 @@ function initMap() {
     document.getElementById('schedDest'),
     { componentRestrictions: { country: 'tw' }, fields: ['name'] }
   );
+
+  // Places 自動補全：開新揪團目的地輸入框
+  placesAutoCreate = new google.maps.places.Autocomplete(
+    document.getElementById('createDest'),
+    { componentRestrictions: { country: 'tw' }, fields: ['geometry', 'name'] }
+  );
+  placesAutoCreate.addListener('place_changed', () => {
+    const place = placesAutoCreate.getPlace();
+    if (!place.geometry) return;
+    document.getElementById('createFareDisplay').textContent = '計算中...';
+    directionsService.route({
+      origin: NCU,
+      destination: place.geometry.location,
+      travelMode: google.maps.TravelMode.DRIVING,
+    }, (result, status) => {
+      if (status === 'OK') {
+        const distKm = result.routes[0].legs[0].distance.value / 1000;
+        createEstimatedFare = Math.round(distKm * 18 + 60);
+        document.getElementById('createFareDisplay').textContent =
+          `$${createEstimatedFare}（${result.routes[0].legs[0].distance.text}・約 ${result.routes[0].legs[0].duration.text}）`;
+      } else {
+        createEstimatedFare = 200;
+        document.getElementById('createFareDisplay').textContent = '無法計算，將使用預設 $200';
+      }
+    });
+  });
 }
 
 function routeTo(destination, label) {
@@ -2249,14 +2275,22 @@ function showToast(msg) {
    CREATE RIDE
 ══════════════════════════════════════ */
 let createRideMaxSeats = 4;
+let createEstimatedFare = 200;
 
 function openCreateRideModal() {
   if (!currentUser) { showToast('請先登入'); return; }
+  // 若地圖已選目的地，直接帶入
   const dest = document.getElementById('destInput').value.trim();
   const fareText = document.getElementById('mapFare').textContent;
-  const fareNum = parseInt(fareText.replace(/[^0-9]/g, '')) || '';
+  const fareNum = parseInt(fareText.replace(/[^0-9]/g, '')) || 0;
   document.getElementById('createDest').value = dest;
-  document.getElementById('createFare').value = fareNum;
+  if (dest && fareNum) {
+    createEstimatedFare = fareNum;
+    document.getElementById('createFareDisplay').textContent = `$${fareNum}`;
+  } else {
+    createEstimatedFare = 200;
+    document.getElementById('createFareDisplay').textContent = '— 請先選擇目的地';
+  }
   createRideMaxSeats = 4;
   updateSeatsBtns();
   document.getElementById('createRideModal').classList.add('open');
@@ -2279,7 +2313,7 @@ function updateSeatsBtns() {
 
 async function submitCreateRide() {
   const dest = document.getElementById('createDest').value.trim();
-  const fare = parseInt(document.getElementById('createFare').value) || 200;
+  const fare = createEstimatedFare || 200;
   if (!dest) { showToast('⚠️ 請輸入目的地'); return; }
   const initial = (currentUser.displayName || currentUser.email || '?')[0].toUpperCase();
   const rideData = {
