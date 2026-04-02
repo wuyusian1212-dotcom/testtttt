@@ -1919,6 +1919,7 @@ function initMap() {
     const place = placesAuto.getPlace();
     if (place.geometry) {
       document.getElementById('destSuggestions').classList.remove('show');
+      document.getElementById('destClear').style.display = 'flex';
       routeTo(place.geometry.location, place.name || place.formatted_address);
     }
   });
@@ -1976,6 +1977,7 @@ function routeTo(destination, label) {
 
 function selectDestByName(name) {
   document.getElementById('destInput').value = name;
+  document.getElementById('destClear').style.display = 'flex';
   document.getElementById('destSuggestions').classList.remove('show');
   document.getElementById('mapDestLabel').textContent = name;
   document.getElementById('mapFare').textContent = '計算中...';
