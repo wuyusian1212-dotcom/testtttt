@@ -1,0 +1,2210 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NCU Ride — 中央大學共乘平台</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<!-- Google Maps JS API (Places + Directions) -->
+<!-- ▶ 請至 https://console.cloud.google.com 啟用 Maps JavaScript API、Places API、Directions API，並將 API 金鑰填入下方 -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyByZOeGKsv3xVgwibKH-fPkRz9MUP8JEH4&libraries=places&callback=initMap&loading=async" async defer></script>
+<style>
+:root {
+  --bg: #f5f5f5;
+  --surface: #ebebeb;
+  --card: #ffffff;
+  --card2: #f0f0f0;
+  --accent: #111111;
+  --accent2: #444444;
+  --accent3: #888888;
+  --warn: #333333;
+  --text: #111111;
+  --text2: #666666;
+  --text3: #aaaaaa;
+  --border: rgba(0,0,0,0.08);
+  --glow: 0 2px 8px rgba(0,0,0,0.12);
+  --r: 16px;
+  --r2: 12px;
+  --nav: 64px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-bottom: var(--nav);
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+
+/* ══════════════════════════════════════
+   TOP HEADER
+══════════════════════════════════════ */
+.top-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(245,245,245,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 56px;
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.3rem;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo-dot { color: var(--accent); }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.points-badge {
+  background: rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.avatar-sm {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #222222, #555555);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 700; color: #ffffff;
+  cursor: pointer;
+}
+
+/* ══════════════════════════════════════
+   BOTTOM NAV
+══════════════════════════════════════ */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 200;
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  height: var(--nav);
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.25s;
+  color: var(--text3);
+  font-size: 0.68rem;
+  font-weight: 500;
+  border: none;
+  background: none;
+  padding: 0;
+  position: relative;
+}
+
+.nav-btn.active { color: var(--accent); }
+
+.nav-btn.active::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.nav-icon {
+  font-size: 1.4rem;
+  transition: transform 0.25s;
+}
+.nav-btn.active .nav-icon { transform: scale(1.15); }
+
+/* ══════════════════════════════════════
+   PAGES
+══════════════════════════════════════ */
+.page { display: none; padding: 16px; }
+.page.active { display: block; }
+
+/* ══════════════════════════════════════
+   HOME PAGE — MODE TABS
+══════════════════════════════════════ */
+.mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 6px;
+}
+
+.mode-tab {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: var(--r2);
+  border: none;
+  background: none;
+  color: var(--text2);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s;
+  text-align: center;
+}
+
+.mode-tab.active {
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* ══════════════════════════════════════
+   MAP BLOCK
+══════════════════════════════════════ */
+.map-container {
+  position: relative;
+  background: var(--card);
+  border-radius: var(--r);
+  overflow: hidden;
+  height: 240px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+
+.map-canvas {
+  width: 100%; height: 100%;
+  position: relative;
+}
+
+.map-overlay-top {
+  position: absolute;
+  top: 10px; left: 10px; right: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+}
+
+.map-search-box {
+  flex: 1;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.78rem;
+  outline: none;
+}
+.map-search-box::placeholder { color: var(--text3); }
+.map-search-box:focus { border-color: var(--accent); }
+
+.map-btn-loc {
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 36px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--accent);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.map-btn-loc:hover { border-color: var(--accent); }
+
+.map-info-bar {
+  position: absolute;
+  bottom: 10px; left: 10px; right: 10px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  z-index: 5;
+}
+
+.map-fare {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+/* ══════════════════════════════════════
+   LOCATION INPUTS
+══════════════════════════════════════ */
+.location-inputs {
+  background: var(--card);
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.loc-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.loc-row + .loc-row { border-top: 1px solid var(--border); }
+
+.loc-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.loc-dot.from { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.loc-dot.to { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); }
+
+.loc-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.88rem;
+  outline: none;
+}
+.loc-input::placeholder { color: var(--text3); }
+
+.loc-arrow {
+  font-size: 0.9rem;
+  color: var(--text3);
+  cursor: pointer;
+}
+
+/* DEST SUGGESTIONS */
+.dest-suggestions {
+  display: none;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 14px;
+}
+.dest-suggestions.show { display: flex; }
+
+.dest-chip {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text2);
+}
+.dest-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ══════════════════════════════════════
+   SCHEDULE ROW (預約)
+══════════════════════════════════════ */
+.schedule-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.time-picker {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 12px 14px;
+  color: var(--text);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+}
+.time-picker:focus { border-color: var(--accent); }
+
+/* ══════════════════════════════════════
+   CARDS — RIDES
+══════════════════════════════════════ */
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title span { color: var(--accent); }
+
+.rides-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+
+.ride-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.ride-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+  background: var(--accent);
+}
+.ride-card.full::after { background: var(--text3); }
+.ride-card.scheduled::after { background: var(--warn); }
+
+.ride-card:hover {
+  border-color: rgba(0,0,0,0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+.ride-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ride-route {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ride-from, .ride-to {
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ride-from { color: var(--text2); }
+.ride-to { color: var(--text); font-weight: 500; }
+
+.badge-status {
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.badge-open { background: rgba(0,0,0,0.07); color: var(--accent); border: 1px solid rgba(0,0,0,0.15); }
+.badge-full { background: rgba(0,0,0,0.04); color: var(--text3); border: 1px solid var(--border); }
+.badge-sched { background: rgba(0,0,0,0.06); color: var(--warn); border: 1px solid rgba(0,0,0,0.15); }
+.badge-hot { background: rgba(0,0,0,0.06); color: var(--accent2); border: 1px solid rgba(0,0,0,0.15); }
+
+.ride-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ride-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text2);
+}
+
+.people-dots {
+  display: flex;
+  gap: 3px;
+}
+.pdot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+.pdot.filled { background: var(--accent); }
+.pdot.empty { background: var(--card2); border: 1px solid var(--border); }
+
+.ride-fare {
+  margin-left: auto;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.join-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--r2);
+  border: none;
+  background: var(--accent);
+  color: #ffffff;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: none;
+}
+.ride-card.expanded .join-btn { display: block; }
+.join-btn:hover { background: #333333; box-shadow: var(--glow); }
+.join-btn:disabled { background: var(--text3); color: var(--text2); cursor: not-allowed; }
+
+.ride-expanded {
+  display: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.ride-card.expanded .ride-expanded { display: block; }
+
+.ride-members {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.member-av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 700;
+  color: var(--bg);
+}
+
+/* ══════════════════════════════════════
+   PEAK TIME BANNER
+══════════════════════════════════════ */
+.peak-banner {
+  background: rgba(0,0,0,0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.peak-icon { font-size: 1.3rem; }
+
+.peak-text { flex: 1; }
+.peak-title { font-size: 0.82rem; font-weight: 700; color: var(--accent3); margin-bottom: 2px; }
+.peak-sub { font-size: 0.72rem; color: var(--text2); }
+
+.peak-time {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--warn);
+  text-align: right;
+}
+
+/* ══════════════════════════════════════
+   SEARCH / FILTER BAR
+══════════════════════════════════════ */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+
+.filter-chip {
+  flex-shrink: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 0.75rem;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.filter-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════════
+   CHAT PAGE
+══════════════════════════════════════ */
+.chat-rooms { display: flex; flex-direction: column; gap: 0; margin-bottom: 16px; }
+
+.chat-room-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.chat-room-item:hover { opacity: 0.8; }
+
+.chat-av {
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #333333, #666666);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.unread-dot {
+  position: absolute;
+  top: -2px; right: -2px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent3);
+  border: 2px solid var(--bg);
+}
+
+.chat-info { flex: 1; min-width: 0; }
+.chat-name { font-weight: 600; font-size: 0.88rem; margin-bottom: 3px; }
+.chat-preview { font-size: 0.75rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-time { font-size: 0.68rem; color: var(--text3); flex-shrink: 0; }
+
+/* CHAT WINDOW */
+.chat-window {
+  display: none;
+  position: fixed;
+  inset: 56px 0 64px 0;
+  background: var(--bg);
+  z-index: 150;
+  flex-direction: column;
+}
+.chat-window.open { display: flex; }
+
+.chat-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-back {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.chat-header-info { flex: 1; }
+.chat-header-name { font-weight: 700; font-size: 0.9rem; }
+.chat-header-sub { font-size: 0.72rem; color: var(--text2); }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.msg-row { display: flex; gap: 8px; align-items: flex-end; }
+.msg-row.mine { flex-direction: row-reverse; }
+
+.msg-av-sm {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--bg);
+  flex-shrink: 0;
+}
+
+.msg-bubble {
+  max-width: 72%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+.msg-row:not(.mine) .msg-bubble {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+.msg-row.mine .msg-bubble {
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 500;
+  border-bottom-right-radius: 4px;
+}
+
+.msg-time {
+  font-size: 0.62rem;
+  color: var(--text3);
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.system-msg {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text3);
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 5px 14px;
+  align-self: center;
+}
+
+.chat-input-row {
+  padding: 10px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 10px 16px;
+  color: var(--text);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.85rem;
+  outline: none;
+}
+.chat-input:focus { border-color: var(--accent); }
+
+.chat-send-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  color: var(--bg);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.chat-send-btn:hover { box-shadow: var(--glow); }
+
+/* ══════════════════════════════════════
+   PROFILE PAGE
+══════════════════════════════════════ */
+.profile-hero {
+  background: rgba(0,0,0,0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 24px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.profile-avatar {
+  width: 68px; height: 68px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #222222, #555555);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--bg);
+  font-family: 'Syne', sans-serif;
+  position: relative;
+  flex-shrink: 0;
+}
+.profile-avatar::after {
+  content: '✓';
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 0.65rem;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bg);
+}
+
+.profile-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.profile-id { font-size: 0.75rem; color: var(--text2); margin-bottom: 8px; }
+.profile-rating { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--warn); }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 14px 12px;
+  text-align: center;
+}
+
+.stat-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 4px;
+}
+.stat-label { font-size: 0.68rem; color: var(--text2); }
+
+/* POINTS SYSTEM */
+.points-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.points-header {
+  background: rgba(0,0,0,0.04);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.points-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.points-total {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.points-list { padding: 8px 0; }
+
+.points-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.points-row:last-child { border-bottom: none; }
+
+.points-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+.points-desc { flex: 1; font-size: 0.8rem; }
+.points-amount {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.points-amount.plus { color: var(--accent); }
+.points-amount.minus { color: var(--accent3); }
+
+/* COUPONS */
+.coupons-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.coupon-card {
+  background: var(--card);
+  border: 1px dashed rgba(0,0,0,0.18);
+  border-radius: var(--r2);
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.coupon-card:hover { border-color: var(--accent); transform: scale(1.02); }
+
+.coupon-card::before {
+  content: '';
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.03);
+}
+
+.coupon-discount {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 4px;
+}
+.coupon-desc { font-size: 0.7rem; color: var(--text2); }
+.coupon-exp { font-size: 0.65rem; color: var(--text3); margin-top: 8px; }
+
+/* HISTORY */
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+
+.history-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.history-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.history-info { flex: 1; min-width: 0; }
+.history-route { font-size: 0.8rem; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-date { font-size: 0.7rem; color: var(--text2); }
+
+.history-right { text-align: right; }
+.history-fare { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; color: var(--accent); }
+.history-pts { font-size: 0.68rem; color: var(--text3); }
+
+/* ══════════════════════════════════════
+   MODAL — JOIN CONFIRM
+══════════════════════════════════════ */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 300;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+
+.modal-sheet {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px 24px 0 0;
+  padding: 24px 20px 40px;
+  width: 100%;
+  max-width: 480px;
+  animation: slide-up 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.modal-handle {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 20px;
+}
+
+.modal-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.modal-sub { font-size: 0.8rem; color: var(--text2); margin-bottom: 20px; }
+
+.modal-fare-big {
+  background: rgba(0,0,0,0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: 14px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.fare-per { font-size: 0.75rem; color: var(--text2); margin-bottom: 4px; }
+.fare-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+.fare-total { font-size: 0.72rem; color: var(--text3); margin-top: 4px; }
+
+.modal-detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+.modal-detail-row strong { color: var(--text); }
+
+.modal-confirm-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--r2);
+  border: none;
+  background: var(--accent);
+  color: #ffffff;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 20px;
+}
+.modal-confirm-btn:hover { box-shadow: var(--glow); }
+
+.modal-cancel-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--r2);
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text2);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 0.88rem;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+/* ══════════════════════════════════════
+   TOAST
+══════════════════════════════════════ */
+.toast {
+  position: fixed;
+  bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: 24px;
+  padding: 10px 20px;
+  font-size: 0.82rem;
+  color: var(--accent);
+  z-index: 400;
+  white-space: nowrap;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  box-shadow: var(--glow);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ══════════════════════════════════════
+   PROGRESS BAR
+══════════════════════════════════════ */
+.seat-bar {
+  height: 4px;
+  background: var(--card2);
+  border-radius: 2px;
+  margin: 6px 0;
+  overflow: hidden;
+}
+.seat-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 0.5s ease;
+}
+
+/* COUNTDOWN */
+.countdown {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--warn);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ══════════════════════════════════════
+   SETTINGS LIST
+══════════════════════════════════════ */
+.settings-list {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.settings-item:last-child { border-bottom: none; }
+.settings-item:hover { background: var(--card2); }
+
+.settings-icon { font-size: 1rem; width: 20px; text-align: center; }
+.settings-label { flex: 1; font-size: 0.85rem; }
+.settings-arrow { color: var(--text3); font-size: 0.7rem; }
+
+/* ══════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════ */
+@media (min-width: 480px) {
+  .page { padding: 20px; max-width: 480px; margin: 0 auto; }
+  .map-container { height: 280px; }
+}
+
+@media (min-width: 768px) {
+  body { display: flex; flex-direction: column; }
+  .top-header { max-width: 960px; margin: 0 auto; width: 100%; padding: 0 24px; }
+  .bottom-nav { max-width: 480px; left: 50%; transform: translateX(-50%); border-radius: 16px 16px 0 0; }
+  .page { max-width: 480px; }
+  .chat-window { max-width: 480px; left: 50%; transform: translateX(-50%); }
+}
+
+/* ══════════════════════════════════════
+   ANIMATION
+══════════════════════════════════════ */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(0,0,0,0.15); }
+  50% { box-shadow: 0 0 16px rgba(0,0,0,0.25); }
+}
+
+.pulse { animation: pulse-glow 2s ease-in-out infinite; }
+
+
+/* FLY-IN */
+.fade-up {
+  animation: fade-up 0.4s ease both;
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ══════════════════════════════════════
+   LOGIN MODAL
+══════════════════════════════════════ */
+#loginModal {
+  display: none;
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  align-items: center; justify-content: center;
+}
+#loginModal.open { display: flex; }
+
+.login-sheet {
+  background: var(--card);
+  border-radius: var(--r);
+  padding: 32px 24px 28px;
+  width: min(380px, calc(100vw - 32px));
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+}
+.login-logo {
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.6rem;
+  text-align: center; margin-bottom: 6px;
+}
+.login-sub { font-size: 0.82rem; color: var(--text2); text-align: center; margin-bottom: 24px; }
+.login-tabs {
+  display: flex; gap: 0; margin-bottom: 20px;
+  border: 1px solid var(--border); border-radius: var(--r2); overflow: hidden;
+}
+.login-tab {
+  flex: 1; padding: 9px; font-size: 0.82rem; font-weight: 600;
+  background: none; border: none; cursor: pointer; color: var(--text2);
+  font-family: 'Noto Sans TC', sans-serif; transition: all 0.2s;
+}
+.login-tab.active { background: var(--accent); color: #fff; }
+.login-field {
+  width: 100%; padding: 12px 14px; border-radius: var(--r2);
+  border: 1px solid var(--border); background: var(--surface);
+  font-size: 0.88rem; font-family: 'Noto Sans TC', sans-serif;
+  color: var(--text); margin-bottom: 12px; outline: none;
+  transition: border-color 0.2s;
+}
+.login-field:focus { border-color: var(--accent); }
+#loginNameWrap { display: none; }
+.login-btn {
+  width: 100%; padding: 13px; border-radius: var(--r2);
+  border: none; background: var(--accent); color: #fff;
+  font-size: 0.9rem; font-weight: 700; cursor: pointer;
+  font-family: 'Noto Sans TC', sans-serif; margin-top: 4px; margin-bottom: 12px;
+  transition: opacity 0.2s;
+}
+.login-btn:hover { opacity: 0.85; }
+.login-divider {
+  text-align: center; font-size: 0.75rem; color: var(--text3);
+  margin-bottom: 12px; position: relative;
+}
+.login-divider::before, .login-divider::after {
+  content: ''; position: absolute; top: 50%; width: 38%; height: 1px;
+  background: var(--border);
+}
+.login-divider::before { left: 0; }
+.login-divider::after  { right: 0; }
+.google-btn {
+  width: 100%; padding: 12px; border-radius: var(--r2);
+  border: 1px solid var(--border); background: #fff;
+  font-size: 0.88rem; font-weight: 600; cursor: pointer;
+  font-family: 'Noto Sans TC', sans-serif; display: flex;
+  align-items: center; justify-content: center; gap: 10px;
+  transition: box-shadow 0.2s;
+}
+.google-btn:hover { box-shadow: var(--glow); }
+.login-error {
+  font-size: 0.78rem; color: #cc3300; text-align: center;
+  margin-top: -6px; margin-bottom: 8px; min-height: 18px;
+}
+</style>
+</head>
+<body>
+
+
+<!-- TOP HEADER -->
+<header class="top-header">
+  <div class="logo">🚗 NCU<span class="logo-dot">Ride</span></div>
+  <div class="header-right">
+    <div class="points-badge">⭐ <span id="headerPoints">280</span> 點</div>
+    <div class="avatar-sm" id="avatarSm" onclick="switchPage('profile')">?</div>
+  </div>
+</header>
+
+<!-- PAGE: HOME -->
+<div id="page-home" class="page active">
+
+  <!-- MODE TABS -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="switchMode('instant')" id="tab-instant">⚡ 即時揪團</button>
+    <button class="mode-tab" onclick="switchMode('schedule')" id="tab-schedule">📅 預約乘車</button>
+  </div>
+
+  <!-- PEAK TIME BANNER -->
+  <div class="peak-banner">
+    <div class="peak-icon">🔥</div>
+    <div class="peak-text">
+      <div class="peak-title">尖峰時段提醒</div>
+      <div class="peak-sub">目前車資較高，建議共乘省錢</div>
+    </div>
+    <div class="peak-time">17:00<br>–19:00</div>
+  </div>
+
+  <!-- MAP -->
+  <div class="map-container">
+    <div class="map-canvas" id="mapCanvas"></div>
+
+    <!-- top bar -->
+    <div class="map-overlay-top">
+      <input class="map-search-box" id="destInput" placeholder="🔍 輸入目的地..."
+             onfocus="document.getElementById('destSuggestions').classList.add('show')"
+             onblur="setTimeout(()=>document.getElementById('destSuggestions').classList.remove('show'),200)">
+      <div class="map-btn-loc" onclick="locateMe()" title="定位">📡</div>
+    </div>
+
+    <!-- bottom info -->
+    <div class="map-info-bar" id="mapInfoBar">
+      <span style="font-size:0.72rem;color:var(--text2)">📍 中央大學 正門</span>
+      <span>→</span>
+      <span style="font-size:0.72rem" id="mapDestLabel">選擇目的地</span>
+      <span class="map-fare" id="mapFare">—</span>
+    </div>
+  </div>
+
+  <!-- DEST SUGGESTIONS -->
+  <div class="dest-suggestions" id="destSuggestions">
+    <div class="dest-chip" onclick="selectDestByName('中壢火車站')">🚉 中壢站</div>
+    <div class="dest-chip" onclick="selectDestByName('高鐵桃園站')">🚄 高鐵站</div>
+    <div class="dest-chip" onclick="selectDestByName('SOGO百貨 中壢館')">🏬 SOGO</div>
+    <div class="dest-chip" onclick="selectDestByName('家樂福中壢店')">🛒 家樂福</div>
+    <div class="dest-chip" onclick="selectDestByName('桃園國際機場')">✈️ 機場</div>
+    <div class="dest-chip" onclick="selectDestByName('台北車站')">🏙️ 台北</div>
+  </div>
+
+  <!-- INSTANT MODE -->
+  <div id="mode-instant">
+    <!-- FILTER -->
+    <div class="filter-bar">
+      <div class="filter-chip active" onclick="filterRides(this,'all')">全部</div>
+      <div class="filter-chip" onclick="filterRides(this,'now')">立即出發</div>
+      <div class="filter-chip" onclick="filterRides(this,'station')">往火車站</div>
+      <div class="filter-chip" onclick="filterRides(this,'mall')">往商圈</div>
+      <div class="filter-chip" onclick="filterRides(this,'airport')">往機場</div>
+    </div>
+
+    <div class="section-title">🟢 揪人中 <span id="rideCount">4</span> 團</div>
+    <div class="rides-list" id="ridesList"></div>
+  </div>
+
+  <!-- SCHEDULE MODE -->
+  <div id="mode-schedule" style="display:none">
+    <div class="location-inputs">
+      <div class="loc-row">
+        <div class="loc-dot from"></div>
+        <input class="loc-input" placeholder="出發地（預設：中央大學）" value="中央大學 正門">
+        <span class="loc-arrow">⌄</span>
+      </div>
+      <div class="loc-row">
+        <div class="loc-dot to"></div>
+        <input class="loc-input" id="schedDest" placeholder="目的地">
+        <span class="loc-arrow">⌄</span>
+      </div>
+    </div>
+
+    <div class="schedule-row">
+      <input type="date" class="time-picker" id="schedDate" style="flex:1">
+      <input type="time" class="time-picker" id="schedTime" style="flex:1">
+    </div>
+
+    <button class="modal-confirm-btn" onclick="createBooking()" style="margin-bottom:20px">
+      📅 建立預約共乘
+    </button>
+
+    <div class="section-title">⏰ 已預約行程 <span style="color:var(--warn)">3</span> 團</div>
+    <div class="rides-list" id="schedList"></div>
+  </div>
+
+</div>
+
+<!-- PAGE: CHAT -->
+<div id="page-chat" class="page">
+  <div class="section-title">💬 共乘聊天室</div>
+  <div class="chat-rooms" id="chatRooms"></div>
+</div>
+
+<!-- PAGE: PROFILE -->
+<div id="page-profile" class="page">
+  <!-- HERO -->
+  <div class="profile-hero">
+    <div class="profile-avatar" id="profileAvatar">?</div>
+    <div>
+      <div class="profile-name" id="profileName">載入中...</div>
+      <div class="profile-id" id="profileId"></div>
+      <div class="profile-rating">★★★★★ <span style="color:var(--text2);font-size:0.75rem">5.0</span></div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-num" id="statRides">23</span>
+      <span class="stat-label">共乘次數</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num" id="statSaved">$1,240</span>
+      <span class="stat-label">累積省錢</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num" id="statCO2">4.2<small style="font-size:0.6rem">kg</small></span>
+      <span class="stat-label">CO₂ 減碳</span>
+    </div>
+  </div>
+
+  <!-- POINTS -->
+  <div class="points-section">
+    <div class="points-header">
+      <div class="points-title">⭐ 點數明細</div>
+      <div class="points-total" id="totalPoints">280 點</div>
+    </div>
+    <div class="points-list" id="pointsList"></div>
+  </div>
+
+  <!-- COUPONS -->
+  <div class="section-title" style="margin-top:4px">🎟 我的優惠券</div>
+  <div class="coupons-grid" id="couponsGrid"></div>
+
+  <!-- REDEEM BTN -->
+  <button class="modal-confirm-btn" onclick="showToast('已兌換 -$20 折價券！')" style="margin-bottom:20px">
+    兌換優惠（需 100 點）
+  </button>
+
+  <!-- HISTORY -->
+  <div class="section-title">📋 乘車紀錄</div>
+  <div class="history-list" id="historyList"></div>
+
+  <!-- SETTINGS -->
+  <div class="section-title" style="margin-top:20px">⚙️ 設定</div>
+  <div class="settings-list">
+    <div class="settings-item"><span class="settings-icon">👤</span><span class="settings-label">編輯個人資料</span><span class="settings-arrow">›</span></div>
+    <div class="settings-item"><span class="settings-icon">🔔</span><span class="settings-label">通知設定</span><span class="settings-arrow">›</span></div>
+    <div class="settings-item"><span class="settings-icon">💳</span><span class="settings-label">付款方式</span><span class="settings-arrow">›</span></div>
+    <div class="settings-item"><span class="settings-icon">🔒</span><span class="settings-label">隱私與安全</span><span class="settings-arrow">›</span></div>
+    <div class="settings-item" onclick="showToast('已分享！獲得 +20 點 🎉')"><span class="settings-icon">📣</span><span class="settings-label">分享好友 +20 點</span><span class="settings-arrow">›</span></div>
+    <div class="settings-item" onclick="doLogout()" style="color:#cc0000"><span class="settings-icon">🚪</span><span class="settings-label" style="color:#cc0000">登出</span><span class="settings-arrow">›</span></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-home" onclick="switchPage('home')">
+    <span class="nav-icon">🏠</span>首頁
+  </button>
+  <button class="nav-btn" id="nav-chat" onclick="switchPage('chat')">
+    <span class="nav-icon">💬</span>聊天室
+  </button>
+  <button class="nav-btn" id="nav-profile" onclick="switchPage('profile')">
+    <span class="nav-icon">👤</span>個人
+  </button>
+</nav>
+
+<!-- CHAT WINDOW -->
+<div class="chat-window" id="chatWindow">
+  <div class="chat-header">
+    <button class="chat-back" onclick="closeChat()">←</button>
+    <div class="chat-header-info">
+      <div class="chat-header-name" id="chatWindowName">—</div>
+      <div class="chat-header-sub" id="chatWindowSub">—</div>
+    </div>
+    <div style="font-size:0.75rem;color:var(--text2)" id="chatPeopleCount">👥 3/4 人</div>
+  </div>
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chatInput" placeholder="輸入訊息..." 
+           onkeydown="if(event.key==='Enter')sendMsg()">
+    <button class="chat-send-btn" onclick="sendMsg()">➤</button>
+  </div>
+</div>
+
+<!-- JOIN MODAL -->
+<!-- LOGIN MODAL -->
+<div id="loginModal">
+  <div class="login-sheet">
+    <div class="login-logo">🚗 NCU<span style="color:var(--accent)">Ride</span></div>
+    <div class="login-sub">中央大學共乘平台 — 請先登入</div>
+    <div class="login-tabs">
+      <button class="login-tab active" id="tabLogin" onclick="switchLoginTab('login')">登入</button>
+      <button class="login-tab" id="tabRegister" onclick="switchLoginTab('register')">註冊</button>
+    </div>
+    <div id="loginNameWrap">
+      <input class="login-field" id="loginDisplayName" type="text" placeholder="顯示名稱（例：王小明）">
+    </div>
+    <input class="login-field" id="loginEmail" type="email" placeholder="電子信箱">
+    <input class="login-field" id="loginPassword" type="password" placeholder="密碼（至少 6 字元）">
+    <div class="login-error" id="loginError"></div>
+    <button class="login-btn" id="loginSubmitBtn" onclick="submitLoginForm()">登入</button>
+    <div class="login-divider">或</div>
+    <button class="google-btn" onclick="loginWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+      使用 Google 帳號登入
+    </button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="joinModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">加入共乘</div>
+    <div class="modal-sub" id="modalSub">確認行程資訊</div>
+    <div class="modal-fare-big">
+      <div class="fare-per">你需付</div>
+      <div class="fare-num" id="modalFarePer">$—</div>
+      <div class="fare-total" id="modalFareTotal">總車資 $— ÷ —人</div>
+    </div>
+    <div class="modal-detail-row">
+      <span>📍 出發地</span><strong id="modalFrom">—</strong>
+    </div>
+    <div class="modal-detail-row">
+      <span>🎯 目的地</span><strong id="modalTo">—</strong>
+    </div>
+    <div class="modal-detail-row">
+      <span>⏱ 出發時間</span><strong id="modalTime">—</strong>
+    </div>
+    <div class="modal-detail-row">
+      <span>👥 加入後人數</span><strong id="modalPeople">—</strong>
+    </div>
+    <button class="modal-confirm-btn" onclick="confirmJoin()">✅ 確認加入</button>
+    <button class="modal-cancel-btn" onclick="closeModal()">取消</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════
+   FIREBASE CONFIG
+   ▶ 請至 https://console.firebase.google.com
+     建立專案後，將設定值填入下方
+══════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey:            "AIzaSyD4zU-cIUhlNKlldTD2mfZcqY3u9QqVnMU",
+  authDomain:        "ncu-rideshare-76451.firebaseapp.com",
+  databaseURL:       "https://ncu-rideshare-76451-default-rtdb.firebaseio.com",
+  projectId:         "ncu-rideshare-76451",
+  storageBucket:     "ncu-rideshare-76451.firebasestorage.app",
+  messagingSenderId: "82022528329",
+  appId:             "1:82022528329:web:c3ec30359f93f979d25698",
+  measurementId:     "G-F843QL58GQ"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+/* ══════════════════════════════════════
+   STATE
+══════════════════════════════════════ */
+let currentUser      = null;
+let currentMode      = 'instant';
+let currentPage      = 'home';
+let selectedRideId   = null;
+let userPoints       = 0;
+let currentChatId    = null;
+let currentFilter    = 'all';
+let RIDES            = [];
+let SCHED_RIDES      = [];
+let ridesUnsubscribe = null;
+let msgsUnsubscribe  = null;
+let botTimers        = [];
+let localBotMsgs     = [];
+let currentRealMsgs  = [];
+let localChatHistory = {};   // rideId → messages[]
+
+/* Google Maps 相關變數 */
+let gMap, directionsService, directionsRenderer, geocoder;
+let placesAuto, placesAutoSched;
+const NCU = { lat: 24.9683, lng: 121.1944 }; // 中央大學
+let userLocation = NCU;
+
+const AVG_COLORS = ['#333333','#555555','#777777','#444444','#666666','#222222'];
+
+/* ══════════════════════════════════════
+   AUTH STATE
+══════════════════════════════════════ */
+function updateUI(user) {
+  if (user) {
+    currentUser = user;
+    const initial = (user.displayName || user.email || '?')[0].toUpperCase();
+    document.getElementById('avatarSm').textContent      = initial;
+    document.getElementById('profileAvatar').textContent = initial;
+    document.getElementById('profileName').textContent   = user.displayName || user.email;
+    document.getElementById('profileId').textContent     = user.email;
+    document.getElementById('headerPoints').textContent  = userPoints;
+    document.getElementById('totalPoints').textContent   = userPoints + ' 點';
+    document.getElementById('loginModal').classList.remove('open');
+    init();
+  } else {
+    currentUser = null;
+    document.getElementById('loginModal').classList.add('open');
+  }
+}
+
+auth.onAuthStateChanged(updateUI);
+
+/* ══════════════════════════════════════
+   LOGIN FUNCTIONS
+══════════════════════════════════════ */
+let loginMode = 'login';
+
+function switchLoginTab(mode) {
+  loginMode = mode;
+  document.getElementById('tabLogin').classList.toggle('active', mode === 'login');
+  document.getElementById('tabRegister').classList.toggle('active', mode === 'register');
+  document.getElementById('loginNameWrap').style.display = mode === 'register' ? 'block' : 'none';
+  document.getElementById('loginSubmitBtn').textContent = mode === 'login' ? '登入' : '建立帳號';
+  document.getElementById('loginError').textContent = '';
+}
+
+function submitLoginForm() {
+  const email    = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginError');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = '請輸入信箱與密碼'; return; }
+  if (loginMode === 'login') {
+    auth.signInWithEmailAndPassword(email, password)
+      .catch(e => { errEl.textContent = translateAuthError(e.code); });
+  } else {
+    const name = document.getElementById('loginDisplayName').value.trim();
+    if (!name) { errEl.textContent = '請輸入顯示名稱'; return; }
+    auth.createUserWithEmailAndPassword(email, password)
+      .then(cred => cred.user.updateProfile({ displayName: name }))
+      .then(() => auth.currentUser.reload())
+      .catch(e => { errEl.textContent = translateAuthError(e.code); });
+  }
+}
+
+function loginWithGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider)
+    .catch(e => { document.getElementById('loginError').textContent = translateAuthError(e.code); });
+}
+
+function doLogout() {
+  auth.signOut().then(() => showToast('已登出'));
+}
+
+function translateAuthError(code) {
+  const map = {
+    'auth/user-not-found':    '找不到此帳號',
+    'auth/wrong-password':    '密碼錯誤',
+    'auth/invalid-email':     '信箱格式不正確',
+    'auth/email-already-in-use': '此信箱已被使用',
+    'auth/weak-password':     '密碼至少需 6 個字元',
+    'auth/popup-closed-by-user': '登入視窗被關閉',
+    'auth/invalid-credential': '帳號或密碼不正確',
+  };
+  return map[code] || `登入失敗（${code}）`;
+}
+
+
+/* ══════════════════════════════════════
+   INIT
+══════════════════════════════════════ */
+function init() {
+  loadLocalRides();
+  renderPointsList();
+  renderCoupons();
+  renderHistory();
+  setDefaultDateTime();
+  startCountdowns();
+}
+
+/* ══════════════════════════════════════
+   LOCAL RIDE DATA（模擬資料，無需 Firestore）
+══════════════════════════════════════ */
+function loadLocalRides() {
+  let nextId = 1;
+  const mk = obj => ({ id: 'ride_' + (nextId++), memberUids: [], ...obj });
+
+  RIDES = [
+    mk({ from:'中央大學 正門',  to:'中壢火車站', time:'現在',    countdown:8,  people:3, max:4, fare:180, category:'station', scheduled:false, members:['王','林','陳'] }),
+    mk({ from:'中央大學 宿舍區',to:'SOGO 百貨',  time:'10分鐘後',countdown:10, people:2, max:4, fare:150, category:'mall',    scheduled:false, members:['李','張'] }),
+    mk({ from:'中央大學 圖書館',to:'桃園機場',   time:'現在',    countdown:3,  people:1, max:4, fare:550, category:'airport', scheduled:false, members:['吳'] }),
+    mk({ from:'中央大學 正門',  to:'台北車站',   time:'15分鐘後',countdown:15, people:4, max:4, fare:480, category:'station', scheduled:false, members:['周','趙','孫','錢'] }),
+  ];
+  SCHED_RIDES = [
+    mk({ from:'中央大學 正門',  to:'中壢火車站', time:'今天 18:00', countdown:0, people:2, max:4, fare:180, category:'station', scheduled:true, members:['王','林'] }),
+    mk({ from:'中央大學 宿舍區',to:'高鐵桃園站', time:'明天 07:30', countdown:0, people:1, max:4, fare:320, category:'station', scheduled:true, members:['陳'] }),
+    mk({ from:'中央大學 正門',  to:'台北車站',   time:'明天 17:00', countdown:0, people:3, max:4, fare:480, category:'station', scheduled:true, members:['李','張','劉'] }),
+  ];
+
+  renderRides(currentFilter);
+  renderSchedRides();
+  renderChatRooms();
+  document.getElementById('rideCount').textContent = RIDES.length;
+}
+
+/* ══════════════════════════════════════
+   PAGE SWITCHING
+══════════════════════════════════════ */
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page).classList.add('active');
+  currentPage = page;
+}
+
+/* ══════════════════════════════════════
+   MODE SWITCHING
+══════════════════════════════════════ */
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + mode).classList.add('active');
+  document.getElementById('mode-instant').style.display = mode === 'instant' ? 'block' : 'none';
+  document.getElementById('mode-schedule').style.display = mode === 'schedule' ? 'block' : 'none';
+}
+
+/* ══════════════════════════════════════
+   RENDER RIDES
+══════════════════════════════════════ */
+function renderRides(filter) {
+  currentFilter = filter;
+  const list = document.getElementById('ridesList');
+  let filtered = RIDES;
+  if (filter === 'now') filtered = RIDES.filter(r => (r.countdown || 0) <= 5);
+  else if (filter !== 'all') filtered = RIDES.filter(r => r.category === filter);
+  document.getElementById('rideCount').textContent = filtered.length;
+  list.innerHTML = filtered.map(r => buildRideCard(r, false)).join('');
+  list.querySelectorAll('.ride-card').forEach(card => {
+    card.addEventListener('click', function(e) {
+      if (e.target.classList.contains('join-btn')) return;
+      toggleCard(this);
+    });
+  });
+}
+
+function renderSchedRides() {
+  const list = document.getElementById('schedList');
+  list.innerHTML = SCHED_RIDES.map(r => buildRideCard(r, true)).join('');
+  list.querySelectorAll('.ride-card').forEach(card => {
+    card.addEventListener('click', function(e) {
+      if (e.target.classList.contains('join-btn')) return;
+      toggleCard(this);
+    });
+  });
+}
+
+function buildRideCard(r, isSched) {
+  const pct  = r.people / r.max;
+  const isFull  = r.people >= r.max;
+  const alreadyJoined = currentUser && (r.memberUids || []).includes(currentUser.uid);
+  const dots = Array.from({length:r.max}, (_,i) =>
+    `<div class="pdot ${i < r.people ? 'filled' : 'empty'}"></div>`).join('');
+  const perFare = Math.ceil(r.fare / (isFull ? r.max : r.people + 1));
+  const memberAv = (r.members || []).map((m,i) =>
+    `<div class="member-av" style="background:${AVG_COLORS[i % AVG_COLORS.length]};color:#fff">${m}</div>`).join('');
+  const badgeCls = isFull ? 'badge-full' : isSched ? 'badge-sched' : 'badge-open';
+  const badgeTxt = isFull ? '已滿團' : isSched ? '預約中' : `揪人中 ${r.people}/${r.max}`;
+  const cardCls  = isFull ? 'full' : isSched ? 'scheduled' : '';
+  const isHot    = !isSched && r.category === 'airport';
+  const joinDisabled = isFull || alreadyJoined;
+  const joinTxt  = isFull ? '已滿團' : alreadyJoined ? '已加入' : '加入共乘 →';
+
+  return `<div class="ride-card fade-up ${cardCls}" data-id="${r.id}">
+    <div class="ride-top">
+      <div class="ride-route">
+        <div class="ride-from">📍 ${r.from}</div>
+        <div class="ride-to" style="font-size:0.85rem">→ ${r.to}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+        <span class="badge-status ${badgeCls}">${badgeTxt}</span>
+        ${isHot ? '<span class="badge-status badge-hot">🔥 熱門</span>' : ''}
+        ${alreadyJoined ? '<span class="badge-status badge-open">✓ 已加入</span>' : ''}
+      </div>
+    </div>
+    <div class="seat-bar"><div class="seat-fill" style="width:${pct*100}%;${isFull?'background:var(--text3)':''}"></div></div>
+    <div class="ride-bottom">
+      <div class="ride-meta">⏱ ${r.time}</div>
+      ${!isSched ? `<div class="ride-meta countdown">🕐 ${r.countdown||0}分</div>` : ''}
+      <div class="ride-meta"><div class="people-dots">${dots}</div>${r.people}/${r.max}人</div>
+      <div class="ride-fare">$${perFare}</div>
+    </div>
+    <div class="ride-expanded">
+      <div class="ride-members">${memberAv}<div class="member-av" style="background:var(--card2);color:var(--text3);border:1px dashed var(--border)">?</div></div>
+      <div style="font-size:0.72rem;color:var(--text2);margin-bottom:8px">加入後每人約 $${perFare} · 總車資 $${r.fare}</div>
+      <button class="join-btn" ${joinDisabled?'disabled':''} onclick="openJoin('${r.id}')">${joinTxt}</button>
+    </div>
+  </div>`;
+}
+
+function toggleCard(card) {
+  const wasExpanded = card.classList.contains('expanded');
+  document.querySelectorAll('.ride-card').forEach(c => c.classList.remove('expanded'));
+  if (!wasExpanded) card.classList.add('expanded');
+}
+
+/* ══════════════════════════════════════
+   FILTER
+══════════════════════════════════════ */
+function filterRides(el, filter) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderRides(filter);
+}
+
+/* ══════════════════════════════════════
+   JOIN MODAL
+══════════════════════════════════════ */
+function openJoin(id) {
+  const r = RIDES.find(x => x.id === id) || SCHED_RIDES.find(x => x.id === id);
+  if (!r) return;
+  selectedRideId = id;
+  const newPeople = r.people + 1;
+  const perFare   = Math.ceil(r.fare / newPeople);
+  document.getElementById('modalTitle').textContent    = '加入共乘';
+  document.getElementById('modalSub').textContent      = `${r.from} → ${r.to}`;
+  document.getElementById('modalFarePer').textContent  = '$' + perFare;
+  document.getElementById('modalFareTotal').textContent= `總車資 $${r.fare} ÷ ${newPeople}人`;
+  document.getElementById('modalFrom').textContent     = r.from;
+  document.getElementById('modalTo').textContent       = r.to;
+  document.getElementById('modalTime').textContent     = r.time;
+  document.getElementById('modalPeople').textContent   = `${newPeople}/${r.max} 人`;
+  document.getElementById('joinModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('joinModal').classList.remove('open');
+  selectedRideId = null;
+}
+
+function confirmJoin() {
+  if (!selectedRideId || !currentUser) return;
+  const btn = document.querySelector('#joinModal .modal-confirm-btn');
+  const all  = [...RIDES, ...SCHED_RIDES];
+  const ride = all.find(x => x.id === selectedRideId);
+  if (!ride) { showToast('❌ 找不到行程'); return; }
+  if (ride.people >= ride.max) { showToast('❌ 已滿團'); return; }
+  if ((ride.memberUids || []).includes(currentUser.uid)) { showToast('❌ 你已加入此行程'); return; }
+
+  const initial = (currentUser.displayName || '?')[0];
+  ride.people++;
+  ride.members = [...(ride.members || []), initial];
+  ride.memberUids = [...(ride.memberUids || []), currentUser.uid];
+
+  // 加入系統訊息（本地）
+  const roomMsgs = localChatHistory[ride.id] || [];
+  roomMsgs.push({ system:true, text:`${currentUser.displayName} 加入了共乘`, timestamp:{ toDate:()=>new Date() } });
+  localChatHistory[ride.id] = roomMsgs;
+
+  userPoints += 10;
+  document.getElementById('headerPoints').textContent = userPoints;
+  document.getElementById('totalPoints').textContent  = userPoints + ' 點';
+
+  renderRides(currentFilter);
+  renderSchedRides();
+  renderChatRooms();
+
+  closeModal();
+  showToast('✅ 成功加入！獲得 +10 點');
+  const rideId = selectedRideId;
+  setTimeout(() => { switchPage('chat'); openChat(rideId); }, 800);
+}
+
+/* ══════════════════════════════════════
+   GOOGLE MAPS
+══════════════════════════════════════ */
+const MAP_STYLE = [
+  { elementType: 'geometry',            stylers: [{ color: '#f0f0f0' }] },
+  { elementType: 'labels.text.fill',    stylers: [{ color: '#555555' }] },
+  { elementType: 'labels.text.stroke',  stylers: [{ color: '#f5f5f5' }] },
+  { featureType: 'road',               elementType: 'geometry',      stylers: [{ color: '#ffffff' }] },
+  { featureType: 'road.arterial',      elementType: 'geometry',      stylers: [{ color: '#e8e8e8' }] },
+  { featureType: 'road.highway',       elementType: 'geometry',      stylers: [{ color: '#dddddd' }] },
+  { featureType: 'water',              elementType: 'geometry',      stylers: [{ color: '#d0d8e0' }] },
+  { featureType: 'poi',                stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit',            stylers: [{ visibility: 'off' }] },
+];
+
+function initMap() {
+  gMap = new google.maps.Map(document.getElementById('mapCanvas'), {
+    center: NCU,
+    zoom: 14,
+    disableDefaultUI: true,
+    gestureHandling: 'greedy',
+    styles: MAP_STYLE,
+  });
+
+  directionsService  = new google.maps.DirectionsService();
+  directionsRenderer = new google.maps.DirectionsRenderer({
+    map: gMap,
+    suppressMarkers: false,
+    polylineOptions: { strokeColor: '#111111', strokeWeight: 4 },
+  });
+  geocoder = new google.maps.Geocoder();
+
+  // 中央大學標記
+  new google.maps.Marker({ position: NCU, map: gMap, title: '中央大學' });
+
+  // Places 自動補全：首頁目的地輸入框
+  placesAuto = new google.maps.places.Autocomplete(
+    document.getElementById('destInput'),
+    { componentRestrictions: { country: 'tw' }, fields: ['geometry', 'name', 'formatted_address'] }
+  );
+  placesAuto.addListener('place_changed', () => {
+    const place = placesAuto.getPlace();
+    if (place.geometry) {
+      document.getElementById('destSuggestions').classList.remove('show');
+      routeTo(place.geometry.location, place.name || place.formatted_address);
+    }
+  });
+
+  // Places 自動補全：預約模式目的地輸入框
+  placesAutoSched = new google.maps.places.Autocomplete(
+    document.getElementById('schedDest'),
+    { componentRestrictions: { country: 'tw' }, fields: ['name'] }
+  );
+}
+
+function routeTo(destination, label) {
+  directionsService.route({
+    origin: userLocation,
+    destination,
+    travelMode: google.maps.TravelMode.DRIVING,
+  }, (result, status) => {
+    if (status !== 'OK') { showToast('❌ 無法計算路線'); return; }
+    directionsRenderer.setDirections(result);
+    const leg    = result.routes[0].legs[0];
+    const distKm = leg.distance.value / 1000;
+    // 簡單車資估算：基本費 + 每公里
+    const fare   = Math.round(distKm * 18 + 60);
+    document.getElementById('mapDestLabel').textContent = label;
+    document.getElementById('mapFare').textContent = '$' + fare;
+    showToast(`📍 ${label}・${leg.distance.text}・約 ${leg.duration.text}`);
+  });
+}
+
+function selectDestByName(name) {
+  document.getElementById('destInput').value = name;
+  document.getElementById('destSuggestions').classList.remove('show');
+  document.getElementById('mapDestLabel').textContent = name;
+  document.getElementById('mapFare').textContent = '計算中...';
+  geocoder.geocode({ address: name + ', 桃園市', region: 'TW' }, (results, status) => {
+    if (status === 'OK' && results[0]) {
+      routeTo(results[0].geometry.location, name);
+    } else {
+      showToast('❌ 找不到該地點');
+      document.getElementById('mapFare').textContent = '—';
+    }
+  });
+}
+
+function locateMe() {
+  if (!navigator.geolocation) { showToast('瀏覽器不支援定位'); return; }
+  showToast('📡 定位中...');
+  navigator.geolocation.getCurrentPosition(pos => {
+    userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    gMap.setCenter(userLocation);
+    gMap.setZoom(15);
+    geocoder.geocode({ location: userLocation }, (results, status) => {
+      const addr = (status === 'OK' && results[0]) ? results[0].formatted_address : '目前位置';
+      showToast('📡 已定位：' + addr);
+    });
+  }, () => showToast('❌ 定位失敗，請允許位置權限'));
+}
+
+/* ══════════════════════════════════════
+   SCHEDULE
+══════════════════════════════════════ */
+function setDefaultDateTime() {
+  const now = new Date();
+  now.setDate(now.getDate() + 1);
+  document.getElementById('schedDate').value = now.toISOString().split('T')[0];
+  document.getElementById('schedTime').value = '18:00';
+}
+
+function createBooking() {
+  const dest = document.getElementById('schedDest').value.trim();
+  const date = document.getElementById('schedDate').value;
+  const time = document.getElementById('schedTime').value;
+  if (!dest) { showToast('⚠️ 請輸入目的地'); return; }
+  const initial = (currentUser.displayName || '?')[0];
+  const newRide = {
+    id: 'ride_' + Date.now(),
+    from: '中央大學 正門',
+    to: dest,
+    time: `${date.split('-').slice(1).join('/')} ${time}`,
+    people: 1, max: 4, fare: 200,
+    category: 'station', scheduled: true,
+    members: [initial],
+    memberUids: [currentUser.uid],
+    countdown: 0,
+  };
+  SCHED_RIDES.unshift(newRide);
+  renderSchedRides();
+  renderChatRooms();
+  document.getElementById('schedDest').value = '';
+  showToast('📅 預約成功！等待其他人加入');
+}
+
+/* ══════════════════════════════════════
+   CHAT
+══════════════════════════════════════ */
+function renderChatRooms() {
+  const container = document.getElementById('chatRooms');
+  const all = [...RIDES, ...SCHED_RIDES];
+  if (all.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px 16px">暫無共乘聊天室</div>';
+    return;
+  }
+  container.innerHTML = all.map(r => `
+    <div class="chat-room-item" onclick="openChat('${r.id}')">
+      <div class="chat-av">🚗</div>
+      <div class="chat-info">
+        <div class="chat-name">${r.to}</div>
+        <div class="chat-preview">${r.time} · ${r.people}/${r.max}人</div>
+      </div>
+      <div class="chat-time">${r.people}/${r.max}</div>
+    </div>
+  `).join('');
+}
+
+function openChat(id) {
+  const r = [...RIDES, ...SCHED_RIDES].find(x => x.id === id);
+  currentChatId = id;
+  document.getElementById('chatWindowName').textContent  = r ? `${r.from.split(' ').pop()} → ${r.to}` : '聊天室';
+  document.getElementById('chatWindowSub').textContent   = r ? r.time : '';
+  document.getElementById('chatPeopleCount').textContent = r ? `👥 ${r.people}/${r.max} 人` : '';
+  document.getElementById('chatWindow').classList.add('open');
+
+  currentRealMsgs = localChatHistory[id] || [];
+  renderMessages(mergeMsgs(currentRealMsgs, []));
+  if (r) startBotSimulation(r);
+}
+
+function renderMessages(msgs) {
+  const container = document.getElementById('chatMessages');
+  if (msgs.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:0.75rem;padding:24px">還沒有人說話，來打個招呼吧！👋</div>';
+    return;
+  }
+  container.innerHTML = msgs.map(m => {
+    if (m.system) return `<div class="system-msg">${escHtml(m.text)}</div>`;
+    const isMe    = currentUser && m.senderId === currentUser.uid;
+    const initial = (m.senderName || '?')[0];
+    const t       = fmtTime(m.timestamp);
+    if (isMe) return `
+      <div class="msg-row mine">
+        <div>
+          <div class="msg-bubble">${escHtml(m.text)}</div>
+          <div style="font-size:0.6rem;color:var(--text3);text-align:right;margin-top:2px">${t}</div>
+        </div>
+      </div>`;
+    return `
+      <div class="msg-row">
+        <div class="msg-av-sm" style="background:#555;color:#fff">${initial}</div>
+        <div>
+          <div style="font-size:0.65rem;color:var(--text3);margin-bottom:3px">${escHtml(m.senderName||'')}</div>
+          <div class="msg-bubble">${escHtml(m.text)}</div>
+          <div style="font-size:0.6rem;color:var(--text3);margin-top:2px">${t}</div>
+        </div>
+      </div>`;
+  }).join('');
+  setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+}
+
+function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const text  = input.value.trim();
+  if (!text || !currentChatId || !currentUser) return;
+  input.value = '';
+  const msg = {
+    text,
+    senderId:   currentUser.uid,
+    senderName: currentUser.displayName || '使用者',
+    system:     false,
+    timestamp:  { toDate: () => new Date() }
+  };
+  if (!localChatHistory[currentChatId]) localChatHistory[currentChatId] = [];
+  localChatHistory[currentChatId].push(msg);
+  currentRealMsgs = localChatHistory[currentChatId];
+  renderMessages(mergeMsgs(currentRealMsgs, localBotMsgs));
+}
+
+function closeChat() {
+  document.getElementById('chatWindow').classList.remove('open');
+  if (msgsUnsubscribe) { msgsUnsubscribe(); msgsUnsubscribe = null; }
+  clearBotTimers();
+  currentChatId   = null;
+  currentRealMsgs = [];
+}
+
+/* ══════════════════════════════════════
+   BOT SIMULATION
+══════════════════════════════════════ */
+const BOT_POOLS = {
+  station: [
+    ['王同學', '大家好！我在宿舍區，出發前叫我一聲 🚂'],
+    ['林小姐', '好的，我快到正門了！'],
+    ['陳同學', '高鐵還是台鐵？'],
+    ['王同學', '台鐵，班次多比較方便'],
+    ['林小姐', '了解，那我快點！'],
+  ],
+  mall: [
+    ['李同學', '我也要去！一起共乘省好多 🛍️'],
+    ['張小姐', '大概幾點回程？'],
+    ['李同學', '我預計逛到下午四點左右'],
+    ['張小姐', '好，那我跟你一起回 👍'],
+  ],
+  airport: [
+    ['吳同學', '我有兩件行李，沒問題吧？✈️'],
+    ['周先生', '沒問題！後車廂夠大'],
+    ['吳同學', '太好了，我航班是晚上八點'],
+    ['周先生', 'ok，出發前半小時提醒大家'],
+  ],
+  default: [
+    ['成員A', '我準備好了！'],
+    ['成員B', '快到集合點了'],
+    ['成員A', '👍'],
+  ]
+};
+
+function clearBotTimers() {
+  botTimers.forEach(t => clearTimeout(t));
+  botTimers    = [];
+  localBotMsgs = [];
+}
+
+function startBotSimulation(ride) {
+  clearBotTimers();
+  const pool = BOT_POOLS[ride.category] || BOT_POOLS.default;
+  if (!ride.members || ride.members.length < 1) return;
+  let delay = 1800;
+  pool.forEach(([name, text], i) => {
+    const t = setTimeout(() => {
+      if (!currentChatId) return;
+      localBotMsgs.push({
+        text,
+        senderName: name,
+        senderId:   'bot_' + i,
+        system:     false,
+        timestamp:  { toDate: () => new Date() }
+      });
+      renderMessages(mergeMsgs(currentRealMsgs, localBotMsgs));
+    }, delay);
+    delay += Math.random() * 4000 + 2500;
+    botTimers.push(t);
+  });
+}
+
+function mergeMsgs(real, bots) {
+  return [...real, ...bots].sort((a, b) => {
+    const ta = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp)) : new Date(0);
+    const tb = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate() : new Date(b.timestamp)) : new Date(0);
+    return ta - tb;
+  });
+}
+
+/* ══════════════════════════════════════
+   PROFILE DATA（靜態範例，可日後接 Firestore）
+══════════════════════════════════════ */
+const POINTS_HISTORY = [
+  { icon:'🎁', desc:'新用戶獎勵', amount:+50, date:'' },
+  { icon:'🚗', desc:'完成共乘（中大→中壢站）', amount:+10, date:'' },
+  { icon:'👥', desc:'分享好友', amount:+20, date:'' },
+  { icon:'🎟', desc:'兌換折價券 -$20', amount:-20, date:'' },
+];
+const HISTORY_DATA = [
+  { route:'中大 → 中壢火車站', date:'2024/03/20 18:05', fare:'$45', pts:'+10' },
+  { route:'中大 → SOGO 百貨',  date:'2024/03/18 14:30', fare:'$38', pts:'+10' },
+  { route:'中大 → 桃園機場',   date:'2024/03/15 09:00', fare:'$138',pts:'+10' },
+];
+const COUPONS = [
+  { discount:'-$20', desc:'車資折扣券', exp:'效期至 04/30' },
+  { discount:'-$50', desc:'好友分享獎勵', exp:'效期至 05/15' },
+];
+
+function renderPointsList() {
+  document.getElementById('pointsList').innerHTML = POINTS_HISTORY.map(p => `
+    <div class="points-row">
+      <div class="points-icon">${p.icon}</div>
+      <div class="points-desc"><div style="font-size:0.8rem">${p.desc}</div></div>
+      <div class="points-amount ${p.amount > 0 ? 'plus' : 'minus'}">${p.amount > 0 ? '+' : ''}${p.amount}</div>
+    </div>`).join('');
+}
+function renderCoupons() {
+  document.getElementById('couponsGrid').innerHTML = COUPONS.map(c => `
+    <div class="coupon-card" onclick="showToast('已選擇優惠券 ${c.discount}')">
+      <span class="coupon-discount">${c.discount}</span>
+      <div class="coupon-desc">${c.desc}</div>
+      <div class="coupon-exp">${c.exp}</div>
+    </div>`).join('');
+}
+function renderHistory() {
+  document.getElementById('historyList').innerHTML = HISTORY_DATA.map(h => `
+    <div class="history-item">
+      <div class="history-icon">🚗</div>
+      <div class="history-info">
+        <div class="history-route">${h.route}</div>
+        <div class="history-date">${h.date}</div>
+      </div>
+      <div class="history-right">
+        <div class="history-fare">${h.fare}</div>
+        <div class="history-pts" style="color:var(--accent)">${h.pts}點</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ══════════════════════════════════════
+   COUNTDOWN
+══════════════════════════════════════ */
+function startCountdowns() {
+  setInterval(() => {
+    RIDES.forEach(r => { if ((r.countdown||0) > 0) r.countdown--; });
+    if (currentPage === 'home' && currentMode === 'instant') {
+      const filtered = currentFilter === 'all' ? RIDES : RIDES.filter(r => r.category === currentFilter);
+      document.querySelectorAll('.countdown').forEach((el, i) => {
+        if (filtered[i]) el.innerHTML = `🕐 ${filtered[i].countdown||0}分`;
+      });
+    }
+  }, 60000);
+}
+
+/* ══════════════════════════════════════
+   TOAST
+══════════════════════════════════════ */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* ══════════════════════════════════════
+   CLOSE MODAL ON OVERLAY CLICK
+══════════════════════════════════════ */
+document.getElementById('joinModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+</script>
+</body>
+</html>
