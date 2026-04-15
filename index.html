@@ -12,1242 +12,7 @@
 <!-- Google Maps JS API (Places + Directions) -->
 <!-- ▶ 請至 https://console.cloud.google.com 啟用 Maps JavaScript API、Places API、Directions API，並將 API 金鑰填入下方 -->
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyByZOeGKsv3xVgwibKH-fPkRz9MUP8JEH4&libraries=places&callback=initMap&loading=async" async defer></script>
-<style>
-:root {
-  --bg: #f5f5f5;
-  --surface: #ebebeb;
-  --card: #ffffff;
-  --card2: #f0f0f0;
-  --accent: #111111;
-  --accent2: #444444;
-  --accent3: #888888;
-  --warn: #333333;
-  --text: #111111;
-  --text2: #666666;
-  --text3: #aaaaaa;
-  --border: rgba(0,0,0,0.08);
-  --glow: 0 2px 8px rgba(0,0,0,0.12);
-  --r: 16px;
-  --r2: 12px;
-  --nav: 64px;
-}
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-html { scroll-behavior: smooth; }
-
-body {
-  font-family: 'Noto Sans TC', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  overflow-x: hidden;
-  padding-bottom: var(--nav);
-}
-
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
-
-/* ══════════════════════════════════════
-   TOP HEADER
-══════════════════════════════════════ */
-.top-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(245,245,245,0.95);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  height: 56px;
-}
-
-.logo {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
-  font-size: 1.3rem;
-  letter-spacing: -0.5px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.logo-dot { color: var(--accent); }
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.points-badge {
-  background: rgba(0,0,0,0.06);
-  border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 20px;
-  padding: 4px 12px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--accent);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.avatar-sm {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #222222, #555555);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.85rem; font-weight: 700; color: #ffffff;
-  cursor: pointer;
-}
-
-/* ══════════════════════════════════════
-   BOTTOM NAV
-══════════════════════════════════════ */
-.bottom-nav {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: 200;
-  background: rgba(255,255,255,0.97);
-  backdrop-filter: blur(20px);
-  border-top: 1px solid var(--border);
-  display: flex;
-  height: var(--nav);
-}
-
-.nav-btn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  cursor: pointer;
-  transition: all 0.25s;
-  color: var(--text3);
-  font-size: 0.68rem;
-  font-weight: 500;
-  border: none;
-  background: none;
-  padding: 0;
-  position: relative;
-}
-
-.nav-btn.active { color: var(--accent); }
-
-.nav-btn.active::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 20%; right: 20%;
-  height: 2px;
-  background: var(--accent);
-  border-radius: 0 0 4px 4px;
-  box-shadow: 0 0 8px var(--accent);
-}
-
-.nav-icon {
-  font-size: 1.4rem;
-  transition: transform 0.25s;
-}
-.nav-btn.active .nav-icon { transform: scale(1.15); }
-
-/* ══════════════════════════════════════
-   PAGES
-══════════════════════════════════════ */
-.page { display: none; padding: 16px; }
-.page.active { display: block; }
-
-/* ══════════════════════════════════════
-   HOME PAGE — MODE TABS
-══════════════════════════════════════ */
-.mode-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-  background: var(--surface);
-  border-radius: var(--r);
-  padding: 6px;
-}
-
-.mode-tab {
-  flex: 1;
-  padding: 10px 8px;
-  border-radius: var(--r2);
-  border: none;
-  background: none;
-  color: var(--text2);
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 0.82rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.25s;
-  text-align: center;
-}
-
-.mode-tab.active {
-  background: var(--accent);
-  color: #ffffff;
-  font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-/* ══════════════════════════════════════
-   MAP BLOCK
-══════════════════════════════════════ */
-.map-container {
-  position: relative;
-  background: var(--card);
-  border-radius: var(--r);
-  overflow: hidden;
-  height: 240px;
-  margin-bottom: 16px;
-  border: 1px solid var(--border);
-}
-
-.map-canvas {
-  width: 100%; height: 100%;
-  position: relative;
-}
-
-.map-overlay-top {
-  position: absolute;
-  top: 10px; left: 10px; right: 10px;
-  display: flex;
-  gap: 8px;
-  z-index: 5;
-}
-
-.map-search-box {
-  flex: 1;
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px 12px;
-  color: var(--text);
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 0.78rem;
-  outline: none;
-}
-.map-search-box::placeholder { color: var(--text3); }
-.map-search-box:focus { border-color: var(--accent); }
-
-.map-btn-loc {
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  width: 36px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1rem;
-  cursor: pointer;
-  color: var(--accent);
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-.map-btn-loc:hover { border-color: var(--accent); }
-
-.map-info-bar {
-  position: absolute;
-  bottom: 10px; left: 10px; right: 10px;
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  z-index: 5;
-}
-
-.map-fare {
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 0.88rem;
-}
-
-/* ══════════════════════════════════════
-   LOCATION INPUTS
-══════════════════════════════════════ */
-.location-inputs {
-  background: var(--card);
-  border-radius: var(--r);
-  border: 1px solid var(--border);
-  margin-bottom: 16px;
-  overflow: hidden;
-}
-
-.loc-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-}
-.loc-row + .loc-row { border-top: 1px solid var(--border); }
-
-.loc-dot {
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.loc-dot.from { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
-.loc-dot.to { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); }
-
-.loc-input {
-  flex: 1;
-  background: none;
-  border: none;
-  color: var(--text);
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 0.88rem;
-  outline: none;
-}
-.loc-input::placeholder { color: var(--text3); }
-
-.loc-arrow {
-  font-size: 0.9rem;
-  color: var(--text3);
-  cursor: pointer;
-}
-
-/* DEST SUGGESTIONS */
-.dest-suggestions {
-  display: none;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 16px 14px;
-}
-.dest-suggestions.show { display: flex; }
-
-.dest-chip {
-  background: var(--card2);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 5px 12px;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: var(--text2);
-}
-.dest-chip:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-/* ══════════════════════════════════════
-   SCHEDULE ROW (預約)
-══════════════════════════════════════ */
-.schedule-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.time-picker {
-  flex: 1;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r2);
-  padding: 12px 14px;
-  color: var(--text);
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 0.85rem;
-  outline: none;
-  cursor: pointer;
-}
-.time-picker:focus { border-color: var(--accent); }
-
-/* ══════════════════════════════════════
-   CARDS — RIDES
-══════════════════════════════════════ */
-.section-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--text3);
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.section-title span { color: var(--accent); }
-
-.rides-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-
-.ride-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 14px 16px;
-  cursor: pointer;
-  transition: all 0.25s;
-  position: relative;
-  overflow: hidden;
-}
-.ride-card::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; bottom: 0;
-  width: 3px;
-  border-radius: 3px 0 0 3px;
-  background: var(--accent);
-}
-.ride-card.full::after { background: var(--text3); }
-.ride-card.scheduled::after { background: var(--warn); }
-
-.ride-card:hover {
-  border-color: rgba(0,0,0,0.2);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-}
-
-.ride-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.ride-route {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.ride-from, .ride-to {
-  font-size: 0.8rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.ride-from { color: var(--text2); }
-.ride-to { color: var(--text); font-weight: 500; }
-
-.badge-status {
-  border-radius: 20px;
-  padding: 3px 10px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.badge-open { background: rgba(0,0,0,0.07); color: var(--accent); border: 1px solid rgba(0,0,0,0.15); }
-.badge-full { background: rgba(0,0,0,0.04); color: var(--text3); border: 1px solid var(--border); }
-.badge-sched { background: rgba(0,0,0,0.06); color: var(--warn); border: 1px solid rgba(0,0,0,0.15); }
-.badge-hot { background: rgba(0,0,0,0.06); color: var(--accent2); border: 1px solid rgba(0,0,0,0.15); }
-
-.ride-bottom {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.ride-meta {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.72rem;
-  color: var(--text2);
-}
-
-.people-dots {
-  display: flex;
-  gap: 3px;
-}
-.pdot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-}
-.pdot.filled { background: var(--accent); }
-.pdot.empty { background: var(--card2); border: 1px solid var(--border); }
-
-.ride-fare {
-  margin-left: auto;
-  font-family: 'Syne', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-.join-btn {
-  margin-top: 10px;
-  width: 100%;
-  padding: 10px;
-  border-radius: var(--r2);
-  border: none;
-  background: var(--accent);
-  color: #ffffff;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: none;
-}
-.ride-card.expanded .join-btn { display: block; }
-.join-btn:hover { background: #333333; box-shadow: var(--glow); }
-.join-btn:disabled { background: var(--text3); color: var(--text2); cursor: not-allowed; }
-
-.ride-expanded {
-  display: none;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.ride-card.expanded .ride-expanded { display: block; }
-
-.ride-members {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.member-av {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.75rem; font-weight: 700;
-  color: var(--bg);
-}
-
-/* ══════════════════════════════════════
-   PEAK TIME BANNER
-══════════════════════════════════════ */
-.peak-banner {
-  background: rgba(0,0,0,0.04);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.peak-icon { font-size: 1.3rem; }
-
-.peak-text { flex: 1; }
-.peak-title { font-size: 0.82rem; font-weight: 700; color: var(--accent3); margin-bottom: 2px; }
-.peak-sub { font-size: 0.72rem; color: var(--text2); }
-
-.peak-time {
-  font-family: 'Syne', sans-serif;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--warn);
-  text-align: right;
-}
-
-/* ══════════════════════════════════════
-   SEARCH / FILTER BAR
-══════════════════════════════════════ */
-.filter-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: none;
-}
-.filter-bar::-webkit-scrollbar { display: none; }
-
-.filter-chip {
-  flex-shrink: 0;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 7px 14px;
-  font-size: 0.75rem;
-  color: var(--text2);
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-.filter-chip.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #ffffff;
-  font-weight: 600;
-}
-
-/* ══════════════════════════════════════
-   CHAT PAGE
-══════════════════════════════════════ */
-.chat-rooms { display: flex; flex-direction: column; gap: 0; margin-bottom: 16px; }
-
-.chat-room-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.chat-room-item:hover { opacity: 0.8; }
-
-.chat-av {
-  width: 44px; height: 44px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #333333, #666666);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.unread-dot {
-  position: absolute;
-  top: -2px; right: -2px;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--accent3);
-  border: 2px solid var(--bg);
-}
-
-.chat-info { flex: 1; min-width: 0; }
-.chat-name { font-weight: 600; font-size: 0.88rem; margin-bottom: 3px; }
-.chat-preview { font-size: 0.75rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chat-time { font-size: 0.68rem; color: var(--text3); flex-shrink: 0; }
-
-/* CHAT WINDOW */
-.chat-window {
-  display: none;
-  position: fixed;
-  inset: 56px 0 64px 0;
-  background: var(--bg);
-  z-index: 150;
-  flex-direction: column;
-}
-.chat-window.open { display: flex; }
-
-.chat-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.chat-back {
-  background: none;
-  border: none;
-  color: var(--accent);
-  font-size: 1.2rem;
-  cursor: pointer;
-}
-
-.chat-header-info { flex: 1; }
-.chat-header-name { font-weight: 700; font-size: 0.9rem; }
-.chat-header-sub { font-size: 0.72rem; color: var(--text2); }
-
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.msg-row { display: flex; gap: 8px; align-items: flex-end; }
-.msg-row.mine { flex-direction: row-reverse; }
-
-.msg-av-sm {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--bg);
-  flex-shrink: 0;
-}
-
-.msg-bubble {
-  max-width: 72%;
-  padding: 10px 14px;
-  border-radius: 18px;
-  font-size: 0.83rem;
-  line-height: 1.5;
-}
-.msg-row:not(.mine) .msg-bubble {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-bottom-left-radius: 4px;
-}
-.msg-row.mine .msg-bubble {
-  background: var(--accent);
-  color: #ffffff;
-  font-weight: 500;
-  border-bottom-right-radius: 4px;
-}
-
-.msg-time {
-  font-size: 0.62rem;
-  color: var(--text3);
-  margin-bottom: 4px;
-  text-align: center;
-}
-
-.system-msg {
-  text-align: center;
-  font-size: 0.72rem;
-  color: var(--text3);
-  background: var(--surface);
-  border-radius: 20px;
-  padding: 5px 14px;
-  align-self: center;
-}
-
-.chat-input-row {
-  padding: 10px 16px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.chat-input {
-  flex: 1;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 10px 16px;
-  color: var(--text);
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 0.85rem;
-  outline: none;
-}
-.chat-input:focus { border-color: var(--accent); }
-
-.chat-send-btn {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: none;
-  color: var(--bg);
-  font-size: 1rem;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-.chat-send-btn:hover { box-shadow: var(--glow); }
-
-/* ══════════════════════════════════════
-   PROFILE PAGE
-══════════════════════════════════════ */
-.profile-hero {
-  background: rgba(0,0,0,0.03);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 24px 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.profile-avatar {
-  width: 68px; height: 68px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #222222, #555555);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: var(--bg);
-  font-family: 'Syne', sans-serif;
-  position: relative;
-  flex-shrink: 0;
-}
-.profile-avatar::after {
-  content: '✓';
-  position: absolute;
-  bottom: 0; right: 0;
-  width: 20px; height: 20px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--bg);
-  font-size: 0.65rem;
-  display: flex; align-items: center; justify-content: center;
-  border: 2px solid var(--bg);
-}
-
-.profile-name {
-  font-family: 'Syne', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-.profile-id { font-size: 0.75rem; color: var(--text2); margin-bottom: 8px; }
-.profile-rating { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--warn); }
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.stat-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r2);
-  padding: 14px 12px;
-  text-align: center;
-}
-
-.stat-num {
-  font-family: 'Syne', sans-serif;
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: var(--accent);
-  display: block;
-  margin-bottom: 4px;
-}
-.stat-label { font-size: 0.68rem; color: var(--text2); }
-
-/* POINTS SYSTEM */
-.points-section {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  margin-bottom: 16px;
-  overflow: hidden;
-}
-
-.points-header {
-  background: rgba(0,0,0,0.04);
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-}
-
-.points-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-.points-total {
-  font-family: 'Syne', sans-serif;
-  font-size: 1.3rem;
-  font-weight: 800;
-  color: var(--accent);
-}
-
-.points-list { padding: 8px 0; }
-
-.points-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.points-row:last-child { border-bottom: none; }
-
-.points-icon { font-size: 1.1rem; width: 20px; text-align: center; }
-.points-desc { flex: 1; font-size: 0.8rem; }
-.points-amount {
-  font-family: 'Syne', sans-serif;
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-.points-amount.plus { color: var(--accent); }
-.points-amount.minus { color: var(--accent3); }
-
-/* COUPONS */
-.coupons-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.coupon-card {
-  background: var(--card);
-  border: 1px dashed rgba(0,0,0,0.18);
-  border-radius: var(--r2);
-  padding: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-  overflow: hidden;
-}
-.coupon-card:hover { border-color: var(--accent); transform: scale(1.02); }
-
-.coupon-card::before {
-  content: '';
-  position: absolute;
-  top: -20px; right: -20px;
-  width: 60px; height: 60px;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.03);
-}
-
-.coupon-discount {
-  font-family: 'Syne', sans-serif;
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: var(--accent);
-  display: block;
-  margin-bottom: 4px;
-}
-.coupon-desc { font-size: 0.7rem; color: var(--text2); }
-.coupon-exp { font-size: 0.65rem; color: var(--text3); margin-top: 8px; }
-
-/* HISTORY */
-.history-list { display: flex; flex-direction: column; gap: 8px; }
-
-.history-item {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r2);
-  padding: 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.history-icon {
-  width: 36px; height: 36px;
-  border-radius: 10px;
-  background: rgba(0,0,0,0.06);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1rem;
-  flex-shrink: 0;
-}
-
-.history-info { flex: 1; min-width: 0; }
-.history-route { font-size: 0.8rem; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.history-date { font-size: 0.7rem; color: var(--text2); }
-
-.history-right { text-align: right; }
-.history-fare { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; color: var(--accent); }
-.history-pts { font-size: 0.68rem; color: var(--text3); }
-
-/* ══════════════════════════════════════
-   MODAL — JOIN CONFIRM
-══════════════════════════════════════ */
-.modal-overlay {
-  display: none;
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.7);
-  backdrop-filter: blur(4px);
-  z-index: 300;
-  align-items: flex-end;
-  justify-content: center;
-}
-.modal-overlay.open { display: flex; }
-
-.modal-sheet {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 24px 24px 0 0;
-  padding: 24px 20px 40px;
-  width: 100%;
-  max-width: 480px;
-  animation: slide-up 0.3s cubic-bezier(0.34,1.56,0.64,1);
-}
-
-@keyframes slide-up {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.modal-handle {
-  width: 36px; height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  margin: 0 auto 20px;
-}
-
-.modal-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.modal-sub { font-size: 0.8rem; color: var(--text2); margin-bottom: 20px; }
-
-.modal-fare-big {
-  background: rgba(0,0,0,0.04);
-  border: 1px solid var(--border);
-  border-radius: var(--r2);
-  padding: 14px;
-  text-align: center;
-  margin-bottom: 16px;
-}
-.fare-per { font-size: 0.75rem; color: var(--text2); margin-bottom: 4px; }
-.fare-num {
-  font-family: 'Syne', sans-serif;
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--accent);
-}
-.fare-total { font-size: 0.72rem; color: var(--text3); margin-top: 4px; }
-
-.modal-detail-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  color: var(--text2);
-  margin-bottom: 8px;
-}
-.modal-detail-row strong { color: var(--text); }
-
-.modal-confirm-btn {
-  width: 100%;
-  padding: 14px;
-  border-radius: var(--r2);
-  border: none;
-  background: var(--accent);
-  color: #ffffff;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-top: 20px;
-}
-.modal-confirm-btn:hover { box-shadow: var(--glow); }
-
-.modal-cancel-btn {
-  width: 100%;
-  padding: 12px;
-  border-radius: var(--r2);
-  border: 1px solid var(--border);
-  background: none;
-  color: var(--text2);
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 0.88rem;
-  cursor: pointer;
-  margin-top: 8px;
-}
-
-/* ══════════════════════════════════════
-   TOAST
-══════════════════════════════════════ */
-.toast {
-  position: fixed;
-  bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
-  background: var(--card);
-  border: 1px solid var(--accent);
-  border-radius: 24px;
-  padding: 10px 20px;
-  font-size: 0.82rem;
-  color: var(--accent);
-  z-index: 400;
-  white-space: nowrap;
-  opacity: 0;
-  transition: all 0.3s;
-  pointer-events: none;
-  box-shadow: var(--glow);
-}
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-/* ══════════════════════════════════════
-   PROGRESS BAR
-══════════════════════════════════════ */
-.seat-bar {
-  height: 4px;
-  background: var(--card2);
-  border-radius: 2px;
-  margin: 6px 0;
-  overflow: hidden;
-}
-.seat-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--accent);
-  transition: width 0.5s ease;
-}
-
-/* COUNTDOWN */
-.countdown {
-  font-family: 'Syne', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--warn);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* ══════════════════════════════════════
-   SETTINGS LIST
-══════════════════════════════════════ */
-.settings-list {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-
-.settings-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.settings-item:last-child { border-bottom: none; }
-.settings-item:hover { background: var(--card2); }
-
-.settings-icon { font-size: 1rem; width: 20px; text-align: center; }
-.settings-label { flex: 1; font-size: 0.85rem; }
-.settings-arrow { color: var(--text3); font-size: 0.7rem; }
-
-/* ══════════════════════════════════════
-   RESPONSIVE
-══════════════════════════════════════ */
-@media (min-width: 480px) {
-  .page { padding: 20px; max-width: 480px; margin: 0 auto; }
-  .map-container { height: 280px; }
-}
-
-@media (min-width: 768px) {
-  body { display: flex; flex-direction: column; }
-  .top-header { max-width: 960px; margin: 0 auto; width: 100%; padding: 0 24px; }
-  .bottom-nav { max-width: 480px; left: 50%; transform: translateX(-50%); border-radius: 16px 16px 0 0; }
-  .page { max-width: 480px; }
-  .chat-window { max-width: 480px; left: 50%; transform: translateX(-50%); }
-}
-
-/* ══════════════════════════════════════
-   ANIMATION
-══════════════════════════════════════ */
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(0,0,0,0.15); }
-  50% { box-shadow: 0 0 16px rgba(0,0,0,0.25); }
-}
-
-.pulse { animation: pulse-glow 2s ease-in-out infinite; }
-
-
-/* FLY-IN */
-.fade-up {
-  animation: fade-up 0.4s ease both;
-}
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-
-/* ══════════════════════════════════════
-   LOGIN MODAL
-══════════════════════════════════════ */
-#loginModal {
-  display: none;
-  position: fixed; inset: 0; z-index: 9999;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px);
-  align-items: center; justify-content: center;
-}
-#loginModal.open { display: flex; }
-
-.login-sheet {
-  background: var(--card);
-  border-radius: var(--r);
-  padding: 32px 24px 28px;
-  width: min(380px, calc(100vw - 32px));
-  box-shadow: 0 8px 40px rgba(0,0,0,0.18);
-}
-.login-logo {
-  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.6rem;
-  text-align: center; margin-bottom: 6px;
-}
-.login-sub { font-size: 0.82rem; color: var(--text2); text-align: center; margin-bottom: 24px; }
-.login-tabs {
-  display: flex; gap: 0; margin-bottom: 20px;
-  border: 1px solid var(--border); border-radius: var(--r2); overflow: hidden;
-}
-.login-tab {
-  flex: 1; padding: 9px; font-size: 0.82rem; font-weight: 600;
-  background: none; border: none; cursor: pointer; color: var(--text2);
-  font-family: 'Noto Sans TC', sans-serif; transition: all 0.2s;
-}
-.login-tab.active { background: var(--accent); color: #fff; }
-.login-field {
-  width: 100%; padding: 12px 14px; border-radius: var(--r2);
-  border: 1px solid var(--border); background: var(--surface);
-  font-size: 0.88rem; font-family: 'Noto Sans TC', sans-serif;
-  color: var(--text); margin-bottom: 12px; outline: none;
-  transition: border-color 0.2s;
-}
-.login-field:focus { border-color: var(--accent); }
-#loginNameWrap { display: none; }
-.login-btn {
-  width: 100%; padding: 13px; border-radius: var(--r2);
-  border: none; background: var(--accent); color: #fff;
-  font-size: 0.9rem; font-weight: 700; cursor: pointer;
-  font-family: 'Noto Sans TC', sans-serif; margin-top: 4px; margin-bottom: 12px;
-  transition: opacity 0.2s;
-}
-.login-btn:hover { opacity: 0.85; }
-.login-divider {
-  text-align: center; font-size: 0.75rem; color: var(--text3);
-  margin-bottom: 12px; position: relative;
-}
-.login-divider::before, .login-divider::after {
-  content: ''; position: absolute; top: 50%; width: 38%; height: 1px;
-  background: var(--border);
-}
-.login-divider::before { left: 0; }
-.login-divider::after  { right: 0; }
-.google-btn {
-  width: 100%; padding: 12px; border-radius: var(--r2);
-  border: 1px solid var(--border); background: #fff;
-  font-size: 0.88rem; font-weight: 600; cursor: pointer;
-  font-family: 'Noto Sans TC', sans-serif; display: flex;
-  align-items: center; justify-content: center; gap: 10px;
-  transition: box-shadow 0.2s;
-}
-.google-btn:hover { box-shadow: var(--glow); }
-.login-error {
-  font-size: 0.78rem; color: #cc3300; text-align: center;
-  margin-top: -6px; margin-bottom: 8px; min-height: 18px;
-}
-
-/* ══════════════════════════════════════
-   CREATE RIDE
-══════════════════════════════════════ */
-.create-ride-btn {
-  background: var(--accent); color: #fff;
-  border: none; border-radius: 20px;
-  padding: 6px 14px; font-size: 0.78rem; font-weight: 700;
-  font-family: 'Noto Sans TC', sans-serif;
-  cursor: pointer; white-space: nowrap;
-}
-.seats-row {
-  display: flex; gap: 8px; margin-bottom: 16px;
-}
-.seat-btn {
-  flex: 1; padding: 10px 0; border-radius: var(--r2);
-  border: 1px solid var(--border); background: var(--surface);
-  font-size: 0.85rem; font-weight: 600; cursor: pointer;
-  font-family: 'Noto Sans TC', sans-serif; transition: all 0.2s;
-  color: var(--text2);
-}
-.seat-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -1286,17 +51,9 @@ body {
 
     <!-- top bar -->
     <div class="map-overlay-top">
-      <div style="position:relative;flex:1">
-        <input class="map-search-box" id="destInput" placeholder="🔍 輸入目的地..."
-               style="width:100%;padding-right:32px"
-               onfocus="document.getElementById('destSuggestions').classList.add('show')"
-               onblur="setTimeout(()=>document.getElementById('destSuggestions').classList.remove('show'),200)"
-               oninput="document.getElementById('destClear').style.display=this.value?'flex':'none'">
-        <button id="destClear" onclick="clearDestInput()"
-          style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);
-                 background:none;border:none;cursor:pointer;color:#aaaaaa;font-size:1rem;
-                 line-height:1;padding:0;width:20px;height:20px;align-items:center;justify-content:center">✕</button>
-      </div>
+      <input class="map-search-box" id="destInput" placeholder="🔍 輸入目的地..."
+             onfocus="document.getElementById('destSuggestions').classList.add('show')"
+             onblur="setTimeout(()=>document.getElementById('destSuggestions').classList.remove('show'),200)">
       <div class="map-btn-loc" onclick="locateMe()" title="定位">📡</div>
     </div>
 
@@ -1330,10 +87,11 @@ body {
       <div class="filter-chip" onclick="filterRides(this,'airport')">往機場</div>
     </div>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div class="section-title" style="margin:0">🟢 揪人中 <span id="rideCount">4</span> 團</div>
-      <button class="create-ride-btn" onclick="openCreateRideModal()">＋ 開新揪團</button>
-    </div>
+    <button class="modal-confirm-btn" onclick="openCreateInstant()" style="margin-bottom:12px">
+      ⚡ 新開一團
+    </button>
+
+    <div class="section-title">🟢 揪人中 <span id="rideCount">4</span> 團</div>
     <div class="rides-list" id="ridesList"></div>
   </div>
 
@@ -1431,7 +189,7 @@ body {
     <div class="settings-item"><span class="settings-icon">💳</span><span class="settings-label">付款方式</span><span class="settings-arrow">›</span></div>
     <div class="settings-item"><span class="settings-icon">🔒</span><span class="settings-label">隱私與安全</span><span class="settings-arrow">›</span></div>
     <div class="settings-item" onclick="showToast('已分享！獲得 +20 點 🎉')"><span class="settings-icon">📣</span><span class="settings-label">分享好友 +20 點</span><span class="settings-arrow">›</span></div>
-    <div class="settings-item" onclick="doLogout()" style="color:#cc0000"><span class="settings-icon">🚪</span><span class="settings-label" style="color:#cc0000">登出</span><span class="settings-arrow">›</span></div>
+    <div class="settings-item" onclick="showToast('目前為模擬模式，無法登出')" style="color:#cc0000"><span class="settings-icon">🚪</span><span class="settings-label" style="color:#cc0000">登出</span><span class="settings-arrow">›</span></div>
   </div>
 </div>
 
@@ -1467,51 +225,6 @@ body {
 </div>
 
 <!-- JOIN MODAL -->
-<!-- CREATE RIDE MODAL -->
-<div class="modal-overlay" id="createRideModal">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div class="modal-title">🚗 開新揪團</div>
-    <div class="modal-sub">設定行程資訊，建立後立即開啟聊天室</div>
-    <div style="font-size:0.75rem;color:var(--text3);margin-bottom:6px;font-weight:600">目的地</div>
-    <input class="login-field" id="createDest" type="text" placeholder="搜尋目的地...">
-    <div style="font-size:0.75rem;color:var(--text3);margin-bottom:8px;font-weight:600">最多人數（含你）</div>
-    <div class="seats-row">
-      <button class="seat-btn" data-seats="2" onclick="setMaxSeats(2)">2 人</button>
-      <button class="seat-btn" data-seats="3" onclick="setMaxSeats(3)">3 人</button>
-      <button class="seat-btn active" data-seats="4" onclick="setMaxSeats(4)">4 人</button>
-    </div>
-    <div style="font-size:0.75rem;color:var(--text3);margin-bottom:6px;font-weight:600">預估車資（自動計算）</div>
-    <div id="createFareDisplay" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px;font-size:0.9rem;font-weight:700;color:var(--accent);margin-bottom:16px">— 請先選擇目的地</div>
-    <button class="modal-confirm-btn" onclick="submitCreateRide()">建立揪團</button>
-    <button class="modal-cancel-btn" onclick="closeCreateModal()">取消</button>
-  </div>
-</div>
-
-<!-- LOGIN MODAL -->
-<div id="loginModal">
-  <div class="login-sheet">
-    <div class="login-logo">🚗 NCU<span style="color:var(--accent)">Ride</span></div>
-    <div class="login-sub">中央大學共乘平台 — 請先登入</div>
-    <div class="login-tabs">
-      <button class="login-tab active" id="tabLogin" onclick="switchLoginTab('login')">登入</button>
-      <button class="login-tab" id="tabRegister" onclick="switchLoginTab('register')">註冊</button>
-    </div>
-    <div id="loginNameWrap">
-      <input class="login-field" id="loginDisplayName" type="text" placeholder="顯示名稱（例：王小明）">
-    </div>
-    <input class="login-field" id="loginEmail" type="email" placeholder="電子信箱">
-    <input class="login-field" id="loginPassword" type="password" placeholder="密碼（至少 6 字元）">
-    <div class="login-error" id="loginError"></div>
-    <button class="login-btn" id="loginSubmitBtn" onclick="submitLoginForm()">登入</button>
-    <div class="login-divider">或</div>
-    <button class="google-btn" onclick="loginWithGoogle()">
-      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
-      使用 Google 帳號登入
-    </button>
-  </div>
-</div>
-
 <div class="modal-overlay" id="joinModal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -1536,6 +249,47 @@ body {
     </div>
     <button class="modal-confirm-btn" onclick="confirmJoin()">✅ 確認加入</button>
     <button class="modal-cancel-btn" onclick="closeModal()">取消</button>
+  </div>
+</div>
+
+<!-- CREATE INSTANT RIDE MODAL -->
+<div class="modal-overlay" id="createInstantModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚡ 新開即時揪團</div>
+    <div class="modal-sub">建立一個新的共乘，等待夥伴加入</div>
+
+    <div class="modal-detail-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <span style="font-size:0.78rem;color:var(--text2)">🎯 目的地</span>
+      <input id="createDest" class="loc-input" placeholder="輸入目的地" style="width:100%">
+    </div>
+
+    <div class="modal-detail-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:12px">
+      <span style="font-size:0.78rem;color:var(--text2)">⏱ 出發時間</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="filter-chip active" id="ct-now"    onclick="selectCreateTime(this,'現在',0)">現在</div>
+        <div class="filter-chip"        id="ct-5"      onclick="selectCreateTime(this,'5分鐘後',5)">5 分後</div>
+        <div class="filter-chip"        id="ct-10"     onclick="selectCreateTime(this,'10分鐘後',10)">10 分後</div>
+        <div class="filter-chip"        id="ct-15"     onclick="selectCreateTime(this,'15分鐘後',15)">15 分後</div>
+      </div>
+    </div>
+
+    <div class="modal-detail-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:12px">
+      <span style="font-size:0.78rem;color:var(--text2)">👥 最多座位</span>
+      <div style="display:flex;gap:8px">
+        <div class="filter-chip"        id="cs-2" onclick="selectCreateSeats(this,2)">2 人</div>
+        <div class="filter-chip active" id="cs-4" onclick="selectCreateSeats(this,4)">4 人</div>
+      </div>
+    </div>
+
+    <div id="createFarePreview" style="display:none;margin-top:16px;background:var(--card2);border-radius:var(--r2);padding:12px 16px">
+      <div class="fare-per">目前你需付（1人）</div>
+      <div class="fare-num" id="createFarePer" style="font-size:1.6rem;font-weight:700">$—</div>
+      <div class="fare-total" id="createFareTotal" style="margin-top:4px;font-size:0.72rem;color:var(--text3)">總車資 $— · 越多人越便宜</div>
+    </div>
+
+    <button class="modal-confirm-btn" onclick="createInstantRide()" style="margin-top:20px">⚡ 建立揪團</button>
+    <button class="modal-cancel-btn"  onclick="closeCreateModal()">取消</button>
   </div>
 </div>
 
@@ -1590,83 +344,20 @@ let userLocation = NCU;
 const AVG_COLORS = ['#333333','#555555','#777777','#444444','#666666','#222222'];
 
 /* ══════════════════════════════════════
-   AUTH STATE
+   SIMULATED USER — 王同學
 ══════════════════════════════════════ */
-function updateUI(user) {
-  if (user) {
-    currentUser = user;
-    const initial = (user.displayName || user.email || '?')[0].toUpperCase();
-    document.getElementById('avatarSm').textContent      = initial;
-    document.getElementById('profileAvatar').textContent = initial;
-    document.getElementById('profileName').textContent   = user.displayName || user.email;
-    document.getElementById('profileId').textContent     = user.email;
-    document.getElementById('headerPoints').textContent  = userPoints;
-    document.getElementById('totalPoints').textContent   = userPoints + ' 點';
-    document.getElementById('loginModal').classList.remove('open');
-    init();
-  } else {
-    currentUser = null;
-    document.getElementById('loginModal').classList.add('open');
-  }
-}
+currentUser = { uid: 'wang-tonglue-001', displayName: '王同學', email: 'wang@ncu.edu.tw', photoURL: '' };
+userPoints  = 280;
 
-auth.onAuthStateChanged(updateUI);
-
-/* ══════════════════════════════════════
-   LOGIN FUNCTIONS
-══════════════════════════════════════ */
-let loginMode = 'login';
-
-function switchLoginTab(mode) {
-  loginMode = mode;
-  document.getElementById('tabLogin').classList.toggle('active', mode === 'login');
-  document.getElementById('tabRegister').classList.toggle('active', mode === 'register');
-  document.getElementById('loginNameWrap').style.display = mode === 'register' ? 'block' : 'none';
-  document.getElementById('loginSubmitBtn').textContent = mode === 'login' ? '登入' : '建立帳號';
-  document.getElementById('loginError').textContent = '';
-}
-
-function submitLoginForm() {
-  const email    = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  const errEl    = document.getElementById('loginError');
-  errEl.textContent = '';
-  if (!email || !password) { errEl.textContent = '請輸入信箱與密碼'; return; }
-  if (loginMode === 'login') {
-    auth.signInWithEmailAndPassword(email, password)
-      .catch(e => { errEl.textContent = translateAuthError(e.code); });
-  } else {
-    const name = document.getElementById('loginDisplayName').value.trim();
-    if (!name) { errEl.textContent = '請輸入顯示名稱'; return; }
-    auth.createUserWithEmailAndPassword(email, password)
-      .then(cred => cred.user.updateProfile({ displayName: name }))
-      .then(() => auth.currentUser.reload())
-      .catch(e => { errEl.textContent = translateAuthError(e.code); });
-  }
-}
-
-function loginWithGoogle() {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider)
-    .catch(e => { document.getElementById('loginError').textContent = translateAuthError(e.code); });
-}
-
-function doLogout() {
-  auth.signOut().then(() => showToast('已登出'));
-}
-
-function translateAuthError(code) {
-  const map = {
-    'auth/user-not-found':    '找不到此帳號',
-    'auth/wrong-password':    '密碼錯誤',
-    'auth/invalid-email':     '信箱格式不正確',
-    'auth/email-already-in-use': '此信箱已被使用',
-    'auth/weak-password':     '密碼至少需 6 個字元',
-    'auth/popup-closed-by-user': '登入視窗被關閉',
-    'auth/invalid-credential': '帳號或密碼不正確',
-  };
-  return map[code] || `登入失敗（${code}）`;
-}
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('avatarSm').textContent      = '王';
+  document.getElementById('profileAvatar').textContent = '王';
+  document.getElementById('profileName').textContent   = '王同學';
+  document.getElementById('profileId').textContent     = 'wang@ncu.edu.tw';
+  document.getElementById('headerPoints').textContent  = userPoints;
+  document.getElementById('totalPoints').textContent   = userPoints + ' 點';
+  init();
+});
 
 
 /* ══════════════════════════════════════
@@ -1679,7 +370,6 @@ function init() {
   renderHistory();
   setDefaultDateTime();
   startCountdowns();
-  listenFirestoreRides();
 }
 
 /* ══════════════════════════════════════
@@ -1919,7 +609,6 @@ function initMap() {
     const place = placesAuto.getPlace();
     if (place.geometry) {
       document.getElementById('destSuggestions').classList.remove('show');
-      document.getElementById('destClear').style.display = 'flex';
       routeTo(place.geometry.location, place.name || place.formatted_address);
     }
   });
@@ -1930,31 +619,6 @@ function initMap() {
     { componentRestrictions: { country: 'tw' }, fields: ['name'] }
   );
 
-  // Places 自動補全：開新揪團目的地輸入框
-  placesAutoCreate = new google.maps.places.Autocomplete(
-    document.getElementById('createDest'),
-    { componentRestrictions: { country: 'tw' }, fields: ['geometry', 'name'] }
-  );
-  placesAutoCreate.addListener('place_changed', () => {
-    const place = placesAutoCreate.getPlace();
-    if (!place.geometry) return;
-    document.getElementById('createFareDisplay').textContent = '計算中...';
-    directionsService.route({
-      origin: NCU,
-      destination: place.geometry.location,
-      travelMode: google.maps.TravelMode.DRIVING,
-    }, (result, status) => {
-      if (status === 'OK') {
-        const distKm = result.routes[0].legs[0].distance.value / 1000;
-        createEstimatedFare = Math.round(distKm * 18 + 60);
-        document.getElementById('createFareDisplay').textContent =
-          `$${createEstimatedFare}（${result.routes[0].legs[0].distance.text}・約 ${result.routes[0].legs[0].duration.text}）`;
-      } else {
-        createEstimatedFare = 200;
-        document.getElementById('createFareDisplay').textContent = '無法計算，將使用預設 $200';
-      }
-    });
-  });
 }
 
 function routeTo(destination, label) {
@@ -1977,7 +641,6 @@ function routeTo(destination, label) {
 
 function selectDestByName(name) {
   document.getElementById('destInput').value = name;
-  document.getElementById('destClear').style.display = 'flex';
   document.getElementById('destSuggestions').classList.remove('show');
   document.getElementById('mapDestLabel').textContent = name;
   document.getElementById('mapFare').textContent = '計算中...';
@@ -1989,16 +652,6 @@ function selectDestByName(name) {
       document.getElementById('mapFare').textContent = '—';
     }
   });
-}
-
-function clearDestInput() {
-  const input = document.getElementById('destInput');
-  input.value = '';
-  document.getElementById('destClear').style.display = 'none';
-  document.getElementById('mapDestLabel').textContent = '選擇目的地';
-  document.getElementById('mapFare').textContent = '—';
-  if (directionsRenderer) directionsRenderer.setDirections({ routes: [] });
-  input.focus();
 }
 
 function locateMe() {
@@ -2023,6 +676,139 @@ function setDefaultDateTime() {
   now.setDate(now.getDate() + 1);
   document.getElementById('schedDate').value = now.toISOString().split('T')[0];
   document.getElementById('schedTime').value = '18:00';
+}
+
+/* ══════════════════════════════════════
+   CREATE INSTANT RIDE
+══════════════════════════════════════ */
+let _createMinutes = 0;
+let _createSeats   = 4;
+let _createFare    = 0;
+
+function updateCreateFarePreview() {
+  const preview = document.getElementById('createFarePreview');
+  if (!_createFare) { preview.style.display = 'none'; return; }
+  const perFare = Math.ceil(_createFare / 1); // 開團時只有自己，1人
+  preview.style.display = 'block';
+  document.getElementById('createFarePer').textContent  = '$' + perFare;
+  document.getElementById('createFareTotal').textContent =
+    `總車資 $${_createFare} · 滿${_createSeats}人每人約 $${Math.ceil(_createFare / _createSeats)}`;
+}
+
+function openCreateInstant() {
+  // 重設表單
+  document.getElementById('createDest').value = '';
+  _createMinutes = 0;
+  _createSeats   = 4;
+  _createFare    = 0;
+  document.getElementById('createFarePreview').style.display = 'none';
+  // 重設 chip 狀態
+  ['ct-now','ct-5','ct-10','ct-15'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById('ct-now').classList.add('active');
+  ['cs-2','cs-4'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById('cs-4').classList.add('active');
+  // 開啟 modal（先顯示，再初始化 Autocomplete，確保元素可見）
+  document.getElementById('createInstantModal').classList.add('open');
+  // 延遲初始化 Places Autocomplete（只做一次）
+  if (!placesAutoCreate) {
+    placesAutoCreate = new google.maps.places.Autocomplete(
+      document.getElementById('createDest'),
+      { componentRestrictions: { country: 'tw' }, fields: ['name', 'formatted_address', 'geometry'] }
+    );
+    placesAutoCreate.addListener('place_changed', () => {
+      const place = placesAutoCreate.getPlace();
+      if (!place) return;
+      const name = place.name || place.formatted_address || document.getElementById('createDest').value;
+      document.getElementById('createDest').value = name;
+      _createFare = 0;
+      updateCreateFarePreview();
+
+      if (place.geometry && place.geometry.location && directionsService) {
+        // 用 DirectionsService 算實際行車距離 → 估總車資
+        directionsService.route({
+          origin: NCU,
+          destination: place.geometry.location,
+          travelMode: google.maps.TravelMode.DRIVING,
+        }, (result, status) => {
+          if (status === 'OK') {
+            const distKm = result.routes[0].legs[0].distance.value / 1000;
+            _createFare  = Math.round(distKm * 18 + 60);
+          } else {
+            // DirectionsService 失敗時用直線距離估算
+            const loc = place.geometry.location;
+            const dx  = (loc.lat() - NCU.lat) * 111;
+            const dy  = (loc.lng() - NCU.lng) * 111 * Math.cos(NCU.lat * Math.PI / 180);
+            _createFare = Math.max(60, Math.round(Math.sqrt(dx*dx + dy*dy) * 18 + 60));
+          }
+          updateCreateFarePreview();
+        });
+      } else {
+        // 沒有 geometry 時用 geocoder 查座標再估算
+        geocoder.geocode({ address: name + ', 桃園市', region: 'TW' }, (res, st) => {
+          if (st === 'OK' && res[0]) {
+            const loc = res[0].geometry.location;
+            const dx  = (loc.lat() - NCU.lat) * 111;
+            const dy  = (loc.lng() - NCU.lng) * 111 * Math.cos(NCU.lat * Math.PI / 180);
+            _createFare = Math.max(60, Math.round(Math.sqrt(dx*dx + dy*dy) * 18 + 60));
+            updateCreateFarePreview();
+          }
+        });
+      }
+    });
+  }
+}
+
+function closeCreateModal() {
+  document.getElementById('createInstantModal').classList.remove('open');
+}
+
+function selectCreateTime(el, label, minutes) {
+  ['ct-now','ct-5','ct-10','ct-15'].forEach(id => document.getElementById(id).classList.remove('active'));
+  el.classList.add('active');
+  _createMinutes = minutes;
+}
+
+function selectCreateSeats(el, n) {
+  ['cs-2','cs-4'].forEach(id => document.getElementById(id).classList.remove('active'));
+  el.classList.add('active');
+  _createSeats = n;
+  updateCreateFarePreview();
+}
+
+function createInstantRide() {
+  if (!currentUser) { showToast('⚠️ 請先登入'); return; }
+  const dest = document.getElementById('createDest').value.trim();
+  if (!dest) { showToast('⚠️ 請輸入目的地'); return; }
+
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + _createMinutes);
+  const timeLabel = _createMinutes === 0
+    ? '現在出發'
+    : `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} 出發`;
+
+  if (!_createFare) { showToast('⚠️ 請選擇目的地以估算車資'); return; }
+  const initial = (currentUser.displayName || '?')[0];
+  const newRide = {
+    id: 'ride_' + Date.now(),
+    from: '中央大學 正門',
+    to: dest,
+    time: timeLabel,
+    people: 1,
+    max: _createSeats,
+    fare: _createFare,
+    category: 'other',
+    scheduled: false,
+    members: [initial],
+    memberUids: [currentUser.uid],
+    countdown: _createMinutes > 0 ? _createMinutes * 60 : 0,
+  };
+
+  RIDES.unshift(newRide);
+  renderRides(currentFilter);
+  renderChatRooms();
+  closeCreateModal();
+  showToast('✅ 揪團建立成功！等待夥伴加入');
+  setTimeout(() => { switchPage('chat'); openChat(newRide.id); }, 800);
 }
 
 function createBooking() {
@@ -2292,113 +1078,8 @@ function showToast(msg) {
 }
 
 /* ══════════════════════════════════════
-   CREATE RIDE
-══════════════════════════════════════ */
-let createRideMaxSeats = 4;
-let createEstimatedFare = 200;
-
-function openCreateRideModal() {
-  if (!currentUser) { showToast('請先登入'); return; }
-  // 若地圖已選目的地，直接帶入
-  const dest = document.getElementById('destInput').value.trim();
-  const fareText = document.getElementById('mapFare').textContent;
-  const fareNum = parseInt(fareText.replace(/[^0-9]/g, '')) || 0;
-  document.getElementById('createDest').value = dest;
-  if (dest && fareNum) {
-    createEstimatedFare = fareNum;
-    document.getElementById('createFareDisplay').textContent = `$${fareNum}`;
-  } else {
-    createEstimatedFare = 200;
-    document.getElementById('createFareDisplay').textContent = '— 請先選擇目的地';
-  }
-  createRideMaxSeats = 4;
-  updateSeatsBtns();
-  document.getElementById('createRideModal').classList.add('open');
-}
-
-function closeCreateModal() {
-  document.getElementById('createRideModal').classList.remove('open');
-}
-
-function setMaxSeats(n) {
-  createRideMaxSeats = n;
-  updateSeatsBtns();
-}
-
-function updateSeatsBtns() {
-  document.querySelectorAll('.seat-btn').forEach(b => {
-    b.classList.toggle('active', parseInt(b.dataset.seats) === createRideMaxSeats);
-  });
-}
-
-async function submitCreateRide() {
-  const dest = document.getElementById('createDest').value.trim();
-  const fare = createEstimatedFare || 200;
-  if (!dest) { showToast('⚠️ 請輸入目的地'); return; }
-  const initial = (currentUser.displayName || currentUser.email || '?')[0].toUpperCase();
-  const rideData = {
-    from: '中央大學 正門',
-    to: dest,
-    time: '現在',
-    countdown: 10,
-    people: 1,
-    max: createRideMaxSeats,
-    fare,
-    category: 'station',
-    scheduled: false,
-    members: [initial],
-    memberUids: [currentUser.uid],
-    createdBy: currentUser.uid,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    active: true
-  };
-  const btn = document.querySelector('#createRideModal .modal-confirm-btn');
-  btn.disabled = true; btn.textContent = '建立中...';
-  try {
-    const docRef = await db.collection('rides').add(rideData);
-    const newRide = { id: docRef.id, ...rideData, _firestore: true };
-    RIDES.unshift(newRide);
-    renderRides(currentFilter);
-    renderChatRooms();
-    document.getElementById('rideCount').textContent = RIDES.length;
-    closeCreateModal();
-    showToast('✅ 揪團建立成功！');
-    setTimeout(() => { switchPage('chat'); openChat(docRef.id); }, 600);
-  } catch(e) {
-    showToast('❌ 建立失敗：' + e.message);
-  } finally {
-    btn.disabled = false; btn.textContent = '建立揪團';
-  }
-}
-
-/* ══════════════════════════════════════
-   FIRESTORE REAL-TIME RIDES
-══════════════════════════════════════ */
-function listenFirestoreRides() {
-  db.collection('rides')
-    .where('active', '==', true)
-    .orderBy('createdAt', 'desc')
-    .onSnapshot(snapshot => {
-      const fsInstant = [], fsSched = [];
-      snapshot.docs.forEach(doc => {
-        const r = { id: doc.id, ...doc.data(), _firestore: true };
-        (r.scheduled ? fsSched : fsInstant).push(r);
-      });
-      RIDES      = [...RIDES.filter(r => !r._firestore),      ...fsInstant];
-      SCHED_RIDES = [...SCHED_RIDES.filter(r => !r._firestore), ...fsSched];
-      renderRides(currentFilter);
-      renderSchedRides();
-      renderChatRooms();
-      document.getElementById('rideCount').textContent = RIDES.length;
-    }, err => console.warn('Firestore rides:', err.message));
-}
-
-/* ══════════════════════════════════════
    CLOSE MODAL ON OVERLAY CLICK
 ══════════════════════════════════════ */
-document.getElementById('createRideModal').addEventListener('click', function(e) {
-  if (e.target === this) closeCreateModal();
-});
 document.getElementById('joinModal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
