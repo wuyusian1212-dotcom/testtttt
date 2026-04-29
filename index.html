@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NCU Ride — 中央大學共乘平台</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<!-- Google Maps JS API (Places + Directions) -->
+<!-- ▶ 請至 https://console.cloud.google.com 啟用 Maps JavaScript API、Places API、Directions API，並將 API 金鑰填入下方 -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyByZOeGKsv3xVgwibKH-fPkRz9MUP8JEH4&libraries=places&callback=initMap&loading=async" async defer></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+
+<!-- TOP HEADER -->
+<header class="top-header">
+  <div class="logo">🚗 NCU<span class="logo-dot">Ride</span></div>
+  <div class="header-right">
+    <div class="points-badge">⭐ <span id="headerPoints">280</span> 點</div>
+    <div class="avatar-sm" id="avatarSm" onclick="switchPage('profile')">?</div>
+  </div>
+</header>
+
+<!-- PAGE: HOME -->
+<div id="page-home" class="page active">
+
+  <!-- MODE TABS -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="switchMode('instant')" id="tab-instant">⚡ 即時揪團</button>
+    <button class="mode-tab" onclick="switchMode('schedule')" id="tab-schedule">📅 預約乘車</button>
+  </div>
+
+  <!-- PEAK TIME BANNER -->
+  <div class="peak-banner">
+    <div class="peak-icon">🔥</div>
+    <div class="peak-text">
+      <div class="peak-title">尖峰時段提醒</div>
+      <div class="peak-sub">目前車資較高，建議共乘省錢</div>
+    </div>
+    <div class="peak-time">17:00<br>–19:00</div>
+  </div>
+
+  <!-- MAP -->
+  <div class="map-container">
+    <div class="map-canvas" id="mapCanvas"></div>
+
+    <!-- top bar -->
+    <div class="map-overlay-top">
+      <input class="map-search-box" id="destInput" placeholder="🔍 輸入目的地..."
+             onfocus="document.getElementById('destSuggestions').classList.add('show')"
+             onblur="setTimeout(()=>document.getElementById('destSuggestions').classList.remove('show'),200)">
+      <div class="map-btn-loc" onclick="locateMe()" title="定位">📡</div>
+    </div>
+
+    <!-- bottom info -->
+    <div class="map-info-bar" id="mapInfoBar">
+      <span style="font-size:0.72rem;color:var(--text2)">📍 中央大學 正門</span>
+      <span>→</span>
+      <span style="font-size:0.72rem" id="mapDestLabel">選擇目的地</span>
+      <span class="map-fare" id="mapFare">—</span>
+    </div>
+  </div>
+
+  <!-- DEST SUGGESTIONS -->
+  <div class="dest-suggestions" id="destSuggestions">
+    <div class="dest-chip" onclick="selectDestByName('中壢火車站')">🚉 中壢站</div>
+    <div class="dest-chip" onclick="selectDestByName('高鐵桃園站')">🚄 高鐵站</div>
+    <div class="dest-chip" onclick="selectDestByName('SOGO百貨 中壢館')">🏬 SOGO</div>
+    <div class="dest-chip" onclick="selectDestByName('家樂福中壢店')">🛒 家樂福</div>
+    <div class="dest-chip" onclick="selectDestByName('桃園國際機場')">✈️ 機場</div>
+    <div class="dest-chip" onclick="selectDestByName('台北車站')">🏙️ 台北</div>
+  </div>
+
+  <!-- INSTANT MODE -->
+  <div id="mode-instant">
+    <!-- FILTER -->
+    <div class="filter-bar">
+      <div class="filter-chip active" onclick="filterRides(this,'all')">全部</div>
+      <div class="filter-chip" onclick="filterRides(this,'now')">立即出發</div>
+      <div class="filter-chip" onclick="filterRides(this,'station')">往火車站</div>
+      <div class="filter-chip" onclick="filterRides(this,'mall')">往商圈</div>
+      <div class="filter-chip" onclick="filterRides(this,'airport')">往機場</div>
+    </div>
+
+    <button class="modal-confirm-btn" onclick="openCreateInstant()" style="margin-bottom:12px">
+      ⚡ 新開一團
+    </button>
+
+    <div class="section-title">🟢 揪人中 <span id="rideCount">4</span> 團</div>
+    <div class="rides-list" id="ridesList"></div>
+  </div>
+
+  <!-- SCHEDULE MODE -->
+  <div id="mode-schedule" style="display:none">
+    <div class="location-inputs">
+      <div class="loc-row">
+        <div class="loc-dot from"></div>
+        <input class="loc-input" placeholder="出發地（預設：中央大學）" value="中央大學 正門">
+        <span class="loc-arrow">⌄</span>
+      </div>
+      <div class="loc-row">
+        <div class="loc-dot to"></div>
+        <input class="loc-input" id="schedDest" placeholder="目的地">
+        <span class="loc-arrow">⌄</span>
+      </div>
+    </div>
+
+    <div class="schedule-row">
+      <input type="date" class="time-picker" id="schedDate" style="flex:1">
+      <input type="time" class="time-picker" id="schedTime" style="flex:1">
+    </div>
+
+    <button class="modal-confirm-btn" onclick="createBooking()" style="margin-bottom:20px">
+      📅 建立預約共乘
+    </button>
+
+    <div class="section-title">⏰ 已預約行程 <span style="color:var(--warn)">3</span> 團</div>
+    <div class="rides-list" id="schedList"></div>
+  </div>
+
+</div>
+
+<!-- PAGE: CHAT -->
+<div id="page-chat" class="page">
+  <div class="section-title">💬 共乘聊天室</div>
+  <div class="chat-rooms" id="chatRooms"></div>
+</div>
+
+<!-- PAGE: PROFILE -->
+<div id="page-profile" class="page">
+  <!-- HERO -->
+  <div class="profile-hero">
+    <div class="profile-avatar" id="profileAvatar">?</div>
+    <div>
+      <div class="profile-name" id="profileName">載入中...</div>
+      <div class="profile-id" id="profileId"></div>
+      <div class="profile-rating">★★★★★ <span style="color:var(--text2);font-size:0.75rem">5.0</span></div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-num" id="statRides">23</span>
+      <span class="stat-label">共乘次數</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num" id="statSaved">$1,240</span>
+      <span class="stat-label">累積省錢</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num" id="statCO2">4.2<small style="font-size:0.6rem">kg</small></span>
+      <span class="stat-label">CO₂ 減碳</span>
+    </div>
+  </div>
+
+  <!-- POINTS -->
+  <div class="points-section">
+    <div class="points-header">
+      <div class="points-title">⭐ 點數明細</div>
+      <div class="points-total" id="totalPoints">280 點</div>
+    </div>
+    <div class="points-list" id="pointsList"></div>
+  </div>
+
+  <!-- COUPONS -->
+  <div class="section-title" style="margin-top:4px">🎟 我的優惠券</div>
+  <div class="coupons-grid" id="couponsGrid"></div>
+
+  <!-- REDEEM BTN -->
+  <button class="modal-confirm-btn" onclick="showToast('已兌換 -$20 折價券！')" style="margin-bottom:20px">
+    兌換優惠（需 100 點）
+  </button>
+
+  <!-- HISTORY -->
+  <div class="section-title">📋 乘車紀錄</div>
+  <div class="history-list" id="historyList"></div>
+
+  <!-- SETTINGS -->
+  <div class="section-title" style="margin-top:20px">⚙️ 設定</div>
+  <div class="settings-list">
+    <div class="settings-item"><span class="settings-icon">👤</span><span class="settings-label">編輯個人資料</span><span class="settings-arrow">›</span></div>
+    <div class="settings-item"><span class="settings-icon">🔔</span><span class="settings-label">通知設定</span><span class="settings-arrow">›</span></div>
+    <div class="settings-item"><span class="settings-icon">💳</span><span class="settings-label">付款方式</span><span class="settings-arrow">›</span></div>
+    <div class="settings-item"><span class="settings-icon">🔒</span><span class="settings-label">隱私與安全</span><span class="settings-arrow">›</span></div>
+    <div class="settings-item" onclick="showToast('已分享！獲得 +20 點 🎉')"><span class="settings-icon">📣</span><span class="settings-label">分享好友 +20 點</span><span class="settings-arrow">›</span></div>
+    <div class="settings-item" onclick="showToast('目前為模擬模式，無法登出')" style="color:#cc0000"><span class="settings-icon">🚪</span><span class="settings-label" style="color:#cc0000">登出</span><span class="settings-arrow">›</span></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-home" onclick="switchPage('home')">
+    <span class="nav-icon">🏠</span>首頁
+  </button>
+  <button class="nav-btn" id="nav-chat" onclick="switchPage('chat')">
+    <span class="nav-icon">💬</span>聊天室
+  </button>
+  <button class="nav-btn" id="nav-profile" onclick="switchPage('profile')">
+    <span class="nav-icon">👤</span>個人
+  </button>
+</nav>
+
+<!-- CHAT WINDOW -->
+<div class="chat-window" id="chatWindow">
+  <div class="chat-header">
+    <button class="chat-back" onclick="closeChat()">←</button>
+    <div class="chat-header-info">
+      <div class="chat-header-name" id="chatWindowName">—</div>
+      <div class="chat-header-sub" id="chatWindowSub">—</div>
+    </div>
+    <div style="font-size:0.75rem;color:var(--text2)" id="chatPeopleCount">👥 3/4 人</div>
+  </div>
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chatInput" placeholder="輸入訊息..." 
+           onkeydown="if(event.key==='Enter')sendMsg()">
+    <button class="chat-send-btn" onclick="sendMsg()">➤</button>
+  </div>
+</div>
+
+<!-- JOIN MODAL -->
+<div class="modal-overlay" id="joinModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">加入共乘</div>
+    <div class="modal-sub" id="modalSub">確認行程資訊</div>
+    <div class="modal-fare-big">
+      <div class="fare-per">你需付</div>
+      <div class="fare-num" id="modalFarePer">$—</div>
+      <div class="fare-total" id="modalFareTotal">總車資 $— ÷ —人</div>
+    </div>
+    <div class="modal-detail-row">
+      <span>📍 出發地</span><strong id="modalFrom">—</strong>
+    </div>
+    <div class="modal-detail-row">
+      <span>🎯 目的地</span><strong id="modalTo">—</strong>
+    </div>
+    <div class="modal-detail-row">
+      <span>⏱ 出發時間</span><strong id="modalTime">—</strong>
+    </div>
+    <div class="modal-detail-row">
+      <span>👥 加入後人數</span><strong id="modalPeople">—</strong>
+    </div>
+    <button class="modal-confirm-btn" onclick="confirmJoin()">✅ 確認加入</button>
+    <button class="modal-cancel-btn" onclick="closeModal()">取消</button>
+  </div>
+</div>
+
+<!-- CREATE INSTANT RIDE MODAL -->
+<div class="modal-overlay" id="createInstantModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚡ 新開即時揪團</div>
+    <div class="modal-sub">建立一個新的共乘，等待夥伴加入</div>
+
+    <div class="modal-detail-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <span style="font-size:0.78rem;color:var(--text2)">🎯 目的地</span>
+      <input id="createDest" class="loc-input" placeholder="輸入目的地" style="width:100%">
+    </div>
+
+    <div class="modal-detail-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:12px">
+      <span style="font-size:0.78rem;color:var(--text2)">⏱ 出發時間</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="filter-chip active" id="ct-now"    onclick="selectCreateTime(this,'現在',0)">現在</div>
+        <div class="filter-chip"        id="ct-5"      onclick="selectCreateTime(this,'5分鐘後',5)">5 分後</div>
+        <div class="filter-chip"        id="ct-10"     onclick="selectCreateTime(this,'10分鐘後',10)">10 分後</div>
+        <div class="filter-chip"        id="ct-15"     onclick="selectCreateTime(this,'15分鐘後',15)">15 分後</div>
+      </div>
+    </div>
+
+    <div class="modal-detail-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:12px">
+      <span style="font-size:0.78rem;color:var(--text2)">👥 最多座位</span>
+      <div style="display:flex;gap:8px">
+        <div class="filter-chip"        id="cs-2" onclick="selectCreateSeats(this,2)">2 人</div>
+        <div class="filter-chip active" id="cs-4" onclick="selectCreateSeats(this,4)">4 人</div>
+      </div>
+    </div>
+
+    <div class="modal-detail-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:12px">
+      <span style="font-size:0.78rem;color:var(--text2)">🎟 使用優惠券</span>
+      <div id="createCouponList" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    </div>
+
+    <div id="createFarePreview" style="display:none;margin-top:16px;background:var(--card2);border-radius:var(--r2);padding:12px 16px">
+      <div class="fare-per">目前你需付（1人）</div>
+      <div class="fare-num" id="createFarePer" style="font-size:1.6rem;font-weight:700">$—</div>
+      <div id="createFareOriginal" style="display:none;font-size:0.72rem;color:var(--text3);text-decoration:line-through;margin-top:2px"></div>
+      <div class="fare-total" id="createFareTotal" style="margin-top:4px;font-size:0.72rem;color:var(--text3)">總車資 $— · 越多人越便宜</div>
+    </div>
+
+    <button class="modal-confirm-btn" onclick="createInstantRide()" style="margin-top:20px">⚡ 建立揪團</button>
+    <button class="modal-cancel-btn"  onclick="closeCreateModal()">取消</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+ <script src="script.js"></script><!--確保 HTML 元素都存在才操作-->
+</body>
+</html>
